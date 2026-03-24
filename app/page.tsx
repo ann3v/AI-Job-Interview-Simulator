@@ -1,163 +1,87 @@
-"use client";
+import Link from "next/link";
+import { Pill } from "@/components/interview/Pill";
 
-import { AnswerComposer } from "@/components/interview/AnswerComposer";
-import { CurrentQuestionCard } from "@/components/interview/CurrentQuestionCard";
-import { EvaluationSummary } from "@/components/interview/EvaluationSummary";
-import { InterviewFeedbackPanel } from "@/components/interview/InterviewFeedbackPanel";
-import { InterviewHeader } from "@/components/interview/InterviewHeader";
-import { InterviewSetup } from "@/components/interview/InterviewSetup";
-import { SectionCard } from "@/components/interview/SectionCard";
-import { useInterviewSession } from "@/hooks/useInterviewSession";
-
-export default function Home() {
-  const {
-    answer,
-    currentQuestionState,
-    error,
-    hasReviewContent,
-    hasStarted,
-    interviewMeta,
-    isAnswering,
-    isStarting,
-    lastReviewState,
-    plainTextResponse,
-    resetInterview,
-    selectedRole,
-    setAnswer,
-    setSelectedRole,
-    startInterview,
-    submitAnswer,
-    submittedAnswers,
-  } = useInterviewSession();
-  const review = hasReviewContent ? lastReviewState : null;
-
+export default function HomePage() {
   return (
     <main className="min-h-screen bg-linear-to-b from-zinc-100 via-white to-sky-50 px-4 py-8 font-sans text-zinc-950 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        {!hasStarted ? (
-          <InterviewSetup
-            role={selectedRole}
-            onRoleChange={setSelectedRole}
-            onRolePick={setSelectedRole}
-            onStart={startInterview}
-            error={error}
-            loading={isStarting}
-          />
-        ) : (
-          <>
-            <InterviewHeader
-              role={selectedRole.trim() || "Selected Role"}
-              state={interviewMeta}
-              onReset={resetInterview}
-            />
+        <section className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl shadow-zinc-200/70">
+          <div className="border-b border-zinc-200 bg-linear-to-r from-zinc-950 via-zinc-900 to-sky-900 px-6 py-8 text-white sm:px-8 sm:py-10">
+            <Pill tone="accent">AI Interview Practice</Pill>
+            <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+              Practice technical interviews in a protected dashboard with
+              Supabase authentication.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-200 sm:text-lg">
+              Sign up or log in, head to the dashboard, and continue using the
+              same interview simulator flow that powers the role setup,
+              question-by-question practice, and feedback review.
+            </p>
+          </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-6">
-                <CurrentQuestionCard
-                  question={currentQuestionState.questionText}
-                  focusPoints={currentQuestionState.focusAreas}
-                  loading={isStarting}
-                />
-                <AnswerComposer
-                  value={answer}
-                  onChange={setAnswer}
-                  onSubmit={submitAnswer}
-                  error={error}
-                  loading={isAnswering}
-                />
-              </div>
-
-              <SectionCard
-                title="Session Guide"
-                subtitle="A quick reminder of how this practice flow works."
-              >
-                <div className="space-y-4">
-                  <div className="rounded-3xl bg-zinc-50 p-5">
-                    <p className="text-sm font-semibold text-zinc-950">
-                      Target role
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">
-                      {selectedRole.trim()}
-                    </p>
-                  </div>
-                  <div className="rounded-3xl bg-zinc-50 p-5">
-                    <p className="text-sm font-semibold text-zinc-950">
-                      Interview flow
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">
-                      You answer the current question first. Coaching and
-                      evaluation appear after each answer so the screen stays
-                      focused on the interview itself.
-                    </p>
-                  </div>
-                  <div className="rounded-3xl bg-zinc-50 p-5">
-                    <p className="text-sm font-semibold text-zinc-950">
-                      Progress
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">
-                      {submittedAnswers === 0
-                        ? "No answers submitted yet."
-                        : `${submittedAnswers} answer${submittedAnswers === 1 ? "" : "s"} reviewed so far.`}
-                    </p>
-                  </div>
-                </div>
-              </SectionCard>
+          <div className="flex flex-col gap-4 px-6 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                Demo-ready flow
+              </p>
+              <p className="max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
+                The landing page stays public while the interview workspace now
+                lives under <span className="font-semibold">/dashboard</span>.
+              </p>
             </div>
 
-            {plainTextResponse ? (
-              <SectionCard
-                title="Interview Update"
-                subtitle="The backend returned plain text for this step, so it is shown directly below."
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
               >
-                <div className="rounded-3xl bg-zinc-50 p-6">
-                  <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-zinc-700">
-                    {plainTextResponse}
-                  </pre>
-                </div>
-              </SectionCard>
-            ) : null}
+                Create account
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-full border border-zinc-300 px-6 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-full border border-sky-200 bg-sky-50 px-6 py-3 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
+              >
+                Open dashboard
+              </Link>
+            </div>
+          </div>
+        </section>
 
-            {review ? (
-              <>
-                <SectionCard
-                  title="Review of Your Previous Answer"
-                  subtitle={
-                    review.reviewedQuestionNumber
-                      ? `Feedback for Question ${review.reviewedQuestionNumber}.`
-                      : "Feedback for the answer you just submitted."
-                  }
-                >
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    {review.reviewedQuestionText ? (
-                      <div className="rounded-3xl bg-zinc-50 p-5">
-                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                          Previous question
-                        </p>
-                        <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-700">
-                          {review.reviewedQuestionText}
-                        </p>
-                      </div>
-                    ) : null}
-                    <div className="rounded-3xl bg-zinc-50 p-5">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Your submitted answer
-                      </p>
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-700">
-                        {review.submittedAnswer}
-                      </p>
-                    </div>
-                  </div>
-                </SectionCard>
-                <EvaluationSummary evaluation={review.evaluation} />
-                <InterviewFeedbackPanel
-                  feedback={review.feedback}
-                  followUp={review.followUp}
-                  idealAnswer={review.strongAnswerExample}
-                />
-              </>
-            ) : null}
-          </>
-        )}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-zinc-950">
+              Auth stays separate
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Supabase session state lives in a dedicated context so the
+              interview hook and route handler stay focused on interview logic.
+            </p>
+          </div>
+          <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-zinc-950">
+              Dashboard stays familiar
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              The same simulator components now render inside the protected
+              dashboard without changing the existing practice flow.
+            </p>
+          </div>
+          <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-zinc-950">
+              Simple school-project UX
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Validation, loading states, success messages, and a logout action
+              are included without introducing a large rewrite.
+            </p>
+          </div>
+        </section>
       </div>
     </main>
   );
