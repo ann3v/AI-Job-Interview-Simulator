@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { requestInterview } from "@/lib/interview-client";
 import {
@@ -25,6 +25,8 @@ import {
 } from "@/lib/interview-store";
 
 type RequestState = "idle" | "starting" | "answering";
+type RestoreState = "loading" | "empty" | "loaded" | "error";
+const RESTORE_TIMEOUT_MS = 12000;
 
 const EMPTY_CURRENT_QUESTION: CurrentQuestionState = {
   questionText: null,
@@ -105,6 +107,38 @@ function getLastReviewStateFromStoredTurn(
   };
 }
 
+async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Restore request timed out."));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function getFriendlyRestoreErrorMessage(error: unknown) {
+  if (
+    error instanceof Error &&
+    (error.message.toLowerCase().includes("failed to fetch") ||
+      error.message.toLowerCase().includes("network") ||
+      error.message.toLowerCase().includes("timeout"))
+  ) {
+    return "Unable to reach Supabase right now. Please check your connection and try again.";
+  }
+
+  return "Unable to restore your latest interview right now. Please try again.";
+}
+
 export function useInterviewSession() {
   const { loading: authLoading, user } = useAuth();
   const [selectedRole, setSelectedRole] = useState("");
@@ -127,8 +161,10 @@ export function useInterviewSession() {
   const [activeSessionStatus, setActiveSessionStatus] =
     useState<PersistedInterviewSessionStatus | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [restoreState, setRestoreState] = useState<RestoreState>("loading");
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreRetryNonce, setRestoreRetryNonce] = useState(0);
   const [persistenceRevision, setPersistenceRevision] = useState(0);
-  const hasAttemptedRestoreRef = useRef(false);
 
   const isStarting = requestState === "starting";
   const isAnswering = requestState === "answering";
@@ -156,38 +192,50 @@ export function useInterviewSession() {
     setInterviewMeta(getInterviewMetaFromStoredSession(session));
     setActiveSessionId(session.id);
     setActiveSessionStatus(session.status);
+    setRestoreError(null);
+    setRestoreState("loaded");
   }
 
   useEffect(() => {
+    const userId = user?.id ?? null;
+
     if (authLoading) {
       return;
     }
 
-    if (!user) {
-      hasAttemptedRestoreRef.current = false;
+    if (!userId) {
       setIsRestoringSession(false);
+      setRestoreError(null);
+      setRestoreState("empty");
       return;
     }
 
-    if (hasAttemptedRestoreRef.current) {
-      return;
-    }
-
-    hasAttemptedRestoreRef.current = true;
+    const resolvedUserId = userId;
     setIsRestoringSession(true);
-    const userId = user.id;
+    setRestoreError(null);
+    setRestoreState("loading");
 
     let isActive = true;
 
     async function restoreInProgressSession() {
       try {
-        const storedSession = await getLatestInProgressInterviewSession(userId);
+        const storedSession = await withTimeout(
+          getLatestInProgressInterviewSession(resolvedUserId),
+          RESTORE_TIMEOUT_MS
+        );
 
         if (!isActive || !storedSession) {
+          if (isActive) {
+            setRestoreError(null);
+            setRestoreState("empty");
+          }
           return;
         }
 
-        const latestTurn = await getLatestInterviewTurn(storedSession.id, userId);
+        const latestTurn = await withTimeout(
+          getLatestInterviewTurn(storedSession.id, resolvedUserId),
+          RESTORE_TIMEOUT_MS
+        );
 
         if (!isActive) {
           return;
@@ -196,6 +244,10 @@ export function useInterviewSession() {
         applyPersistedSessionState(storedSession, latestTurn);
       } catch (restoreError) {
         console.error("Failed to restore interview session:", restoreError);
+        if (isActive) {
+          setRestoreError(getFriendlyRestoreErrorMessage(restoreError));
+          setRestoreState("error");
+        }
       } finally {
         if (isActive) {
           setIsRestoringSession(false);
@@ -208,7 +260,7 @@ export function useInterviewSession() {
     return () => {
       isActive = false;
     };
-  }, [authLoading, user]);
+  }, [authLoading, restoreRetryNonce, user?.id]);
 
   async function startInterview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -253,6 +305,8 @@ export function useInterviewSession() {
       setHasStarted(true);
       setSubmittedAnswers(0);
       setAnswer("");
+      setRestoreError(null);
+      setRestoreState("loaded");
       setActiveSessionStatus(
         getPersistedSessionStatus(splitTurn.interviewMeta?.status)
       );
@@ -419,6 +473,8 @@ export function useInterviewSession() {
     setSubmittedAnswers(0);
     setActiveSessionId(null);
     setActiveSessionStatus(null);
+    setRestoreError(null);
+    setRestoreState("empty");
   }
 
   async function resumeSession(sessionId: string) {
@@ -449,6 +505,17 @@ export function useInterviewSession() {
     }
   }
 
+  function retryRestoreSession() {
+    if (authLoading || !user || isRestoringSession) {
+      return;
+    }
+
+    setRestoreError(null);
+    setRestoreState("loading");
+    setIsRestoringSession(true);
+    setRestoreRetryNonce((currentValue) => currentValue + 1);
+  }
+
   return {
     activeSessionId,
     activeSessionStatus,
@@ -465,6 +532,9 @@ export function useInterviewSession() {
     persistenceRevision,
     plainTextResponse,
     resetInterview,
+    restoreError,
+    restoreState,
+    retryRestoreSession,
     resumeSession,
     selectedRole,
     setAnswer,

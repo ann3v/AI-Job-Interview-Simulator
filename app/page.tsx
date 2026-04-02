@@ -9,24 +9,24 @@ export default function HomePage() {
           <div className="border-b border-zinc-200 bg-linear-to-r from-zinc-950 via-zinc-900 to-sky-900 px-6 py-8 text-white sm:px-8 sm:py-10">
             <Pill tone="accent">AI Interview Practice</Pill>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              Practice technical interviews in a protected dashboard with
-              Supabase authentication.
+              Practice job interviews with realistic questions and clear
+              feedback.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-200 sm:text-lg">
-              Sign up or log in, head to the dashboard, and continue using the
-              same interview simulator flow that powers the role setup,
-              question-by-question practice, and feedback review.
+              Choose a role, answer one question at a time, and get actionable
+              feedback to improve every session. Save your progress and continue
+              practicing anytime.
             </p>
           </div>
 
           <div className="flex flex-col gap-4 px-6 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                Demo-ready flow
+                Your next practice step
               </p>
               <p className="max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
-                The landing page stays public while the interview workspace now
-                lives under <span className="font-semibold">/dashboard</span>.
+                Start a new interview session or continue where you left off
+                from your practice dashboard.
               </p>
             </div>
 
@@ -35,19 +35,19 @@ export default function HomePage() {
                 href="/signup"
                 className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
               >
-                Create account
+                Start practicing
               </Link>
               <Link
                 href="/login"
                 className="inline-flex items-center justify-center rounded-full border border-zinc-300 px-6 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
               >
-                Log in
+                Continue practice
               </Link>
               <Link
                 href="/dashboard"
                 className="inline-flex items-center justify-center rounded-full border border-sky-200 bg-sky-50 px-6 py-3 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
               >
-                Open dashboard
+                Open session
               </Link>
             </div>
           </div>
@@ -56,29 +56,29 @@ export default function HomePage() {
         <section className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-zinc-950">
-              Auth stays separate
+              Practice with purpose
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Supabase session state lives in a dedicated context so the
-              interview hook and route handler stay focused on interview logic.
+              Focus on role-specific interview questions that match what you
+              want to improve next.
             </p>
           </div>
           <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-zinc-950">
-              Dashboard stays familiar
+              Learn after every answer
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              The same simulator components now render inside the protected
-              dashboard without changing the existing practice flow.
+              Get quick feedback and a stronger sample response so you can
+              improve immediately.
             </p>
           </div>
           <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-zinc-950">
-              Simple school-project UX
+              Track your progress
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Validation, loading states, success messages, and a logout action
-              are included without introducing a large rewrite.
+              Review past sessions, compare answers, and keep building interview
+              confidence over time.
             </p>
           </div>
         </section>

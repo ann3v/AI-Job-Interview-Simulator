@@ -89,18 +89,18 @@ export function LoginForm() {
   return (
     <AuthShell
       badge="Welcome Back"
-      title="Sign in to continue your interview practice."
-      description="Use your email and password to open the protected dashboard and keep the simulator flow in one place."
+      title="Continue your interview practice."
+      description="Sign in to resume your latest session, review feedback, and keep improving."
       alternateLabel="Create an account"
       alternateHref="/signup"
       alternateText="Need an account?"
     >
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Login
+          Log in
         </h2>
         <p className="text-sm leading-6 text-zinc-600">
-          Demo-friendly email/password auth powered by Supabase.
+          Continue your interview sessions in seconds.
         </p>
       </div>
 
@@ -143,7 +143,7 @@ export function LoginForm() {
             onChange={(event) => handleChange("password", event.target.value)}
             disabled={pending || loading}
             className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-zinc-50"
-            placeholder="Minimum 6 characters"
+            placeholder="Enter your password"
             autoComplete="current-password"
           />
           {fieldErrors.password ? (
@@ -170,10 +170,10 @@ export function LoginForm() {
           {pending ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
-              Signing in...
+              Signing you in...
             </>
           ) : (
-            "Login"
+            "Continue interview"
           )}
         </button>
       </form>

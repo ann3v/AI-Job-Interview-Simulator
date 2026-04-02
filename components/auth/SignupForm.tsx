@@ -97,26 +97,26 @@ export function SignupForm() {
     }
 
     setSuccessMessage(
-      "Account created. Check your inbox for a confirmation email, then log in."
+      "Account created. Check your inbox to confirm your email, then log in to start practicing."
     );
     setPending(false);
   }
 
   return (
     <AuthShell
-      badge="Create Account"
-      title="Set up your interview practice dashboard."
-      description="Create a simple email/password account so only signed-in users can access the simulator area."
+      badge="Start Practicing"
+      title="Create your account to save every session."
+      description="Track your interview progress, review feedback anytime, and continue sessions where you left off."
       alternateLabel="Log in instead"
       alternateHref="/login"
       alternateText="Already have an account?"
     >
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Sign up
+          Create account
         </h2>
         <p className="text-sm leading-6 text-zinc-600">
-          Add your name, email, and password to create a Supabase user.
+          It only takes a minute to start your first interview session.
         </p>
       </div>
 
@@ -135,7 +135,7 @@ export function SignupForm() {
             onChange={(event) => handleChange("fullName", event.target.value)}
             disabled={pending || loading}
             className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-zinc-50"
-            placeholder="Alex Johnson"
+            placeholder="Your full name"
             autoComplete="name"
           />
           {fieldErrors.fullName ? (
@@ -183,7 +183,7 @@ export function SignupForm() {
             onChange={(event) => handleChange("password", event.target.value)}
             disabled={pending || loading}
             className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-zinc-50"
-            placeholder="Minimum 6 characters"
+            placeholder="Create a password"
             autoComplete="new-password"
           />
           {fieldErrors.password ? (
@@ -219,21 +219,21 @@ export function SignupForm() {
           {pending ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
-              Creating account...
+              Creating your account...
             </>
           ) : (
-            "Create account"
+            "Start practicing"
           )}
         </button>
       </form>
 
       <p className="mt-6 text-sm leading-6 text-zinc-500">
-        Need the public entry page first?{" "}
+        Want to review the product overview first?{" "}
         <Link
           href="/"
           className="font-semibold text-sky-700 transition hover:text-sky-800"
         >
-          Go back home
+          Go to home
         </Link>
         .
       </p>

@@ -38,22 +38,21 @@ export function AuthShell({
           <div className="space-y-6 px-6 py-8 sm:px-8">
             <div className="rounded-[1.75rem] bg-zinc-50 p-5">
               <p className="text-sm font-semibold text-zinc-950">
-                Why sign in first?
+                Keep your progress
               </p>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Your interview dashboard stays separate from the public landing
-                page, which keeps auth logic isolated from the simulator flow.
+                Save interview sessions, answers, and feedback so you can pick
+                up exactly where you left off.
               </p>
             </div>
 
             <div className="rounded-[1.75rem] bg-zinc-50 p-5">
               <p className="text-sm font-semibold text-zinc-950">
-                What you can do inside the dashboard
+                Improve with every session
               </p>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Start a role-specific interview, answer questions one at a
-                time, and review AI feedback without changing the existing
-                interview architecture.
+                Practice role-specific questions, review feedback, and build
+                confidence one answer at a time.
               </p>
             </div>
           </div>

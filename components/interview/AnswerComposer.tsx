@@ -21,8 +21,8 @@ export function AnswerComposer({
       title="Your Answer"
       subtitle="Keep your answer concise, explain your reasoning, and include practical tradeoffs when relevant."
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <div className="space-y-2">
+      <form className="space-y-3" onSubmit={onSubmit}>
+        <div className="space-y-1.5">
           <label
             htmlFor="answer-input"
             className="text-sm font-medium text-zinc-700"
@@ -35,7 +35,7 @@ export function AnswerComposer({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder="Write the answer you would give in a real interview..."
-            className="min-h-48 w-full rounded-3xl border border-zinc-300 bg-zinc-50 px-5 py-4 text-base leading-7 text-zinc-900 outline-none transition focus:border-sky-500 focus:bg-white"
+            className="min-h-40 w-full rounded-3xl border border-zinc-300 bg-zinc-50 px-5 py-3.5 text-base leading-7 text-zinc-900 outline-none transition focus:border-sky-500 focus:bg-white sm:min-h-44"
             disabled={loading}
           />
         </div>
@@ -57,7 +57,7 @@ export function AnswerComposer({
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex min-w-44 items-center justify-center gap-3 rounded-full bg-zinc-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-w-40 items-center justify-center gap-3 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
           >
             {loading ? (
               <>

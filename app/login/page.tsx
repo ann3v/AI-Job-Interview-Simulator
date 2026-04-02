@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
   title: "Login | AI Job Interview Simulator",
-  description: "Sign in to access the protected interview practice dashboard.",
+  description: "Log in to continue your interview practice sessions.",
 };
 
 export default function LoginPage() {
