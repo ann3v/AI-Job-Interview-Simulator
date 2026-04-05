@@ -9,17 +9,30 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { getUserAvatarStorageKey } from "@/lib/user-profile";
 
 type AuthContextValue = {
+  avatarDataUrl: string | null;
   user: User | null;
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateAvatarDataUrl: (avatarDataUrl: string | null) => void;
+  updateDisplayName: (fullName: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function getStoredAvatarDataUrl(user: User | null) {
+  if (!user || typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(getUserAvatarStorageKey(user.id));
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,9 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Failed to restore Supabase session:", error.message);
         setSession(null);
         setUser(null);
+        setAvatarDataUrl(null);
       } else {
         setSession(data.session);
         setUser(data.session?.user ?? null);
+        setAvatarDataUrl(getStoredAvatarDataUrl(data.session?.user ?? null));
       }
 
       setLoading(false);
@@ -58,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      setAvatarDataUrl(getStoredAvatarDataUrl(nextSession?.user ?? null));
       setLoading(false);
     });
 
@@ -76,8 +92,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function updateAvatarDataUrl(nextAvatarDataUrl: string | null) {
+    if (!user) {
+      setAvatarDataUrl(null);
+      return;
+    }
+
+    const storageKey = getUserAvatarStorageKey(user.id);
+
+    setAvatarDataUrl(nextAvatarDataUrl);
+
+    if (nextAvatarDataUrl) {
+      window.localStorage.setItem(storageKey, nextAvatarDataUrl);
+      return;
+    }
+
+    window.localStorage.removeItem(storageKey);
+  }
+
+  async function updateDisplayName(fullName: string) {
+    const normalizedFullName = fullName.trim();
+
+    if (!normalizedFullName) {
+      throw new Error("Please enter a name before saving.");
+    }
+
+    if (!user) {
+      throw new Error("You must be signed in to update your profile.");
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        ...(typeof user.user_metadata === "object" && user.user_metadata
+          ? user.user_metadata
+          : {}),
+        full_name: normalizedFullName,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (data.user) {
+      setUser(data.user);
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider
+      value={{
+        avatarDataUrl,
+        user,
+        session,
+        loading,
+        signOut,
+        updateAvatarDataUrl,
+        updateDisplayName,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

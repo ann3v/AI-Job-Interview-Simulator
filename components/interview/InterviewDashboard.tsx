@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { AnswerComposer } from "@/components/interview/AnswerComposer";
 import { CurrentQuestionCard } from "@/components/interview/CurrentQuestionCard";
 import { EvaluationSummary } from "@/components/interview/EvaluationSummary";
@@ -23,14 +22,6 @@ import {
 
 type HistoryState = "loading" | "empty" | "loaded" | "error";
 type ActiveModal = "feedback" | "history" | "details" | null;
-
-function getDisplayName(fullName: unknown, fallbackEmail: string | undefined) {
-  if (typeof fullName === "string" && fullName.trim()) {
-    return fullName.trim();
-  }
-
-  return fallbackEmail ?? "Candidate";
-}
 
 function formatSessionStatus(status: PersistedInterviewSession["status"]) {
   switch (status) {
@@ -155,10 +146,6 @@ export function InterviewDashboard() {
     selectedSessionTurns.find((turn) => turn.id === selectedTurnId) ??
     selectedSessionTurns[selectedSessionTurns.length - 1] ??
     null;
-  const displayName = getDisplayName(
-    user?.user_metadata?.full_name,
-    user?.email
-  );
 
   useEffect(() => {
     const latestReviewKey = latestSubmittedAnswer
@@ -366,146 +353,113 @@ export function InterviewDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-zinc-100 via-white to-sky-50 px-4 py-8 font-sans text-zinc-950 sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <section className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <Pill tone="accent">Protected Dashboard</Pill>
-                <Pill>{displayName}</Pill>
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">
-                  AI Job Interview Simulator
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
-                  Practice role-specific interview questions, stay focused on
-                  one answer at a time, and review the AI feedback after each
-                  submission.
-                </p>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setActiveModal("feedback")}
+          disabled={!hasLatestReview}
+          className={getDashboardActionButtonClass({
+            isActive: activeModal === "feedback",
+            disabled: !hasLatestReview,
+          })}
+        >
+          View Feedback
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveModal("history")}
+          className={getDashboardActionButtonClass({
+            isActive: activeModal === "history",
+          })}
+        >
+          Session History
+        </button>
+        <button
+          type="button"
+          onClick={openSessionDetailsModal}
+          className={getDashboardActionButtonClass({
+            isActive: activeModal === "details",
+          })}
+        >
+          Session Details
+        </button>
+      </div>
 
-            <div className="flex flex-col items-start gap-3 sm:items-end">
-              <div className="rounded-2xl bg-zinc-100 px-4 py-3 text-sm text-zinc-700">
-                Signed in as{" "}
-                <span className="font-semibold text-zinc-950">
-                  {user?.email ?? "your account"}
-                </span>
-              </div>
-              <LogoutButton />
-            </div>
+      {isRestoringSession ? (
+        <SectionCard
+          title="Restoring Session"
+          subtitle="Checking Supabase for an in-progress interview so you can pick up where you left off."
+        >
+          <div className="flex items-center gap-3 rounded-3xl bg-zinc-50 p-5 text-sm font-medium text-zinc-600">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-950" />
+            Restoring your latest interview...
           </div>
-        </section>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setActiveModal("feedback")}
-            disabled={!hasLatestReview}
-            className={getDashboardActionButtonClass({
-              isActive: activeModal === "feedback",
-              disabled: !hasLatestReview,
-            })}
-          >
-            View Feedback
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveModal("history")}
-            className={getDashboardActionButtonClass({
-              isActive: activeModal === "history",
-            })}
-          >
-            Session History
-          </button>
-          <button
-            type="button"
-            onClick={openSessionDetailsModal}
-            className={getDashboardActionButtonClass({
-              isActive: activeModal === "details",
-            })}
-          >
-            Session Details
-          </button>
-        </div>
-
-        {isRestoringSession ? (
-          <SectionCard
-            title="Restoring Session"
-            subtitle="Checking Supabase for an in-progress interview so you can pick up where you left off."
-          >
-            <div className="flex items-center gap-3 rounded-3xl bg-zinc-50 p-5 text-sm font-medium text-zinc-600">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-950" />
-              Restoring your latest interview...
-            </div>
-          </SectionCard>
-        ) : !hasStarted ? (
-          <>
-            {restoreState === "empty" ? (
-              <SectionCard
-                title="No In-Progress Interview"
-                subtitle="No in-progress interview found. Start a new practice session or review your saved sessions below."
-              >
-                <div className="rounded-3xl bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
-                  No in-progress interview found.
-                </div>
-              </SectionCard>
-            ) : null}
-            {restoreState === "error" ? (
-              <SectionCard
-                title="Restore Failed"
-                subtitle="The dashboard could not restore your latest in-progress interview."
-              >
-                <div className="space-y-4 rounded-3xl bg-zinc-50 p-5">
-                  <p className="text-sm leading-6 text-zinc-600">
-                    {restoreError ??
-                      "Unable to reach Supabase right now. Please try again."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={retryRestoreSession}
-                    className="inline-flex items-center rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-zinc-800"
-                  >
-                    Retry Restore
-                  </button>
-                </div>
-              </SectionCard>
-            ) : null}
-            <InterviewSetup
-              role={selectedRole}
-              onRoleChange={setSelectedRole}
-              onRolePick={setSelectedRole}
-              onStart={startInterview}
-              error={error}
+        </SectionCard>
+      ) : !hasStarted ? (
+        <>
+          {restoreState === "empty" ? (
+            <SectionCard
+              title="No In-Progress Interview"
+              subtitle="No in-progress interview found. Start a new practice session or review your saved sessions below."
+            >
+              <div className="rounded-3xl bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
+                No in-progress interview found.
+              </div>
+            </SectionCard>
+          ) : null}
+          {restoreState === "error" ? (
+            <SectionCard
+              title="Restore Failed"
+              subtitle="The dashboard could not restore your latest in-progress interview."
+            >
+              <div className="space-y-4 rounded-3xl bg-zinc-50 p-5">
+                <p className="text-sm leading-6 text-zinc-600">
+                  {restoreError ??
+                    "Unable to reach Supabase right now. Please try again."}
+                </p>
+                <button
+                  type="button"
+                  onClick={retryRestoreSession}
+                  className="inline-flex items-center rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-zinc-800"
+                >
+                  Retry Restore
+                </button>
+              </div>
+            </SectionCard>
+          ) : null}
+          <InterviewSetup
+            role={selectedRole}
+            onRoleChange={setSelectedRole}
+            onRolePick={setSelectedRole}
+            onStart={startInterview}
+            error={error}
+            loading={isStarting}
+          />
+        </>
+      ) : (
+        <>
+          <InterviewHeader
+            role={selectedRole.trim() || "Selected Role"}
+            state={interviewMeta}
+            onReset={resetInterview}
+          />
+          <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr] xl:items-start">
+            <CurrentQuestionCard
+              question={currentQuestionState.questionText}
+              focusPoints={currentQuestionState.focusAreas}
               loading={isStarting}
             />
-          </>
-        ) : (
-          <>
-            <InterviewHeader
-              role={selectedRole.trim() || "Selected Role"}
-              state={interviewMeta}
-              onReset={resetInterview}
+            <AnswerComposer
+              value={answer}
+              onChange={setAnswer}
+              onSubmit={submitAnswer}
+              error={error}
+              loading={isAnswering}
             />
-            <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr] xl:items-start">
-              <CurrentQuestionCard
-                question={currentQuestionState.questionText}
-                focusPoints={currentQuestionState.focusAreas}
-                loading={isStarting}
-              />
-              <AnswerComposer
-                value={answer}
-                onChange={setAnswer}
-                onSubmit={submitAnswer}
-                error={error}
-                loading={isAnswering}
-              />
-            </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       <OverlayModal
         isOpen={activeModal === "feedback"}
@@ -872,6 +826,6 @@ export function InterviewDashboard() {
           </div>
         )}
       </OverlayModal>
-    </main>
+    </div>
   );
 }
