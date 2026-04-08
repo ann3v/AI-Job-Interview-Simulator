@@ -22,6 +22,7 @@ import {
 
 type HistoryState = "loading" | "empty" | "loaded" | "error";
 type ActiveModal = "feedback" | "history" | "details" | null;
+const HISTORY_REQUEST_TIMEOUT_MS = 12000;
 
 function formatSessionStatus(status: PersistedInterviewSession["status"]) {
   switch (status) {
@@ -64,6 +65,25 @@ function getFriendlyHistoryErrorMessage(error: unknown) {
   }
 
   return "Unable to load your saved interview sessions right now. Please try again.";
+}
+
+async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("History request timed out."));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 function getDashboardActionButtonClass({
@@ -189,7 +209,10 @@ export function InterviewDashboard() {
       setHistoryError(null);
 
       try {
-        const sessions = await listInterviewSessions(userId);
+        const sessions = await withTimeout(
+          listInterviewSessions(userId),
+          HISTORY_REQUEST_TIMEOUT_MS
+        );
 
         if (!isActive) {
           return;
@@ -246,7 +269,10 @@ export function InterviewDashboard() {
       setSessionDetailError(null);
 
       try {
-        const turns = await listInterviewTurns(sessionId, userId);
+        const turns = await withTimeout(
+          listInterviewTurns(sessionId, userId),
+          HISTORY_REQUEST_TIMEOUT_MS
+        );
 
         if (!isActive) {
           return;
@@ -259,9 +285,7 @@ export function InterviewDashboard() {
         }
 
         setSessionDetailError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Unable to load the selected interview session."
+          getFriendlyHistoryErrorMessage(loadError)
         );
       } finally {
         if (isActive) {
@@ -305,9 +329,15 @@ export function InterviewDashboard() {
     setHistoryError(null);
 
     try {
-      await deleteInterviewSession(sessionId, userId);
+      await withTimeout(
+        deleteInterviewSession(sessionId, userId),
+        HISTORY_REQUEST_TIMEOUT_MS
+      );
 
-      const sessions = await listInterviewSessions(userId);
+      const sessions = await withTimeout(
+        listInterviewSessions(userId),
+        HISTORY_REQUEST_TIMEOUT_MS
+      );
       setSavedSessions(sessions);
       setHistoryState(sessions.length === 0 ? "empty" : "loaded");
       setHistoryError(null);
@@ -324,11 +354,7 @@ export function InterviewDashboard() {
         setSelectedTurnId(null);
       }
     } catch (deleteError) {
-      setHistoryError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Unable to delete this interview session right now."
-      );
+      setHistoryError(getFriendlyHistoryErrorMessage(deleteError));
       setHistoryState("error");
     } finally {
       setDeletingSessionId(null);

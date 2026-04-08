@@ -16,6 +16,10 @@ export const ROLE_OPTIONS = [
 ];
 
 export const FEATURED_ROLE_OPTIONS = ROLE_OPTIONS.slice(0, 6);
+export const MAX_ROLE_LENGTH = 120;
+export const MAX_ANSWER_LENGTH = 4000;
+export const MAX_HISTORY_MESSAGES = 24;
+export const MAX_HISTORY_MESSAGE_LENGTH = 6000;
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -122,6 +126,18 @@ export function parseInterviewResponse(value: unknown) {
   return isRecord(value) ? (value as InterviewResponse) : null;
 }
 
+export function getCurrentQuestionText(response: InterviewResponse | null) {
+  const nestedQuestion = isRecord(response?.current_question)
+    ? response.current_question
+    : null;
+
+  return getMeaningfulText(nestedQuestion?.question_text ?? response?.question);
+}
+
+export function hasRenderableCurrentQuestion(value: unknown) {
+  return Boolean(getCurrentQuestionText(parseInterviewResponse(value)));
+}
+
 export function getVisibleEvaluation(
   response: InterviewResponse | null
 ): VisibleEvaluation | null {
@@ -169,9 +185,7 @@ function getCurrentQuestionState(
     : null;
 
   return {
-    questionText: getMeaningfulText(
-      nestedQuestion?.question_text ?? response?.question
-    ),
+    questionText: getCurrentQuestionText(response),
     questionNumber:
       typeof meta?.question_number === "number" ? meta.question_number : null,
     topic: getMeaningfulText(meta?.topic),
@@ -261,9 +275,14 @@ export function splitInterviewTurn({
     };
   }
 
+  const nextQuestionState = getCurrentQuestionState(response);
+
   return {
     interviewMeta: getInterviewMeta(response),
-    currentQuestionState: getCurrentQuestionState(response),
+    currentQuestionState:
+      !nextQuestionState.questionText && previousQuestionState
+        ? previousQuestionState
+        : nextQuestionState,
     lastReviewState: getLastReviewState({
       response,
       previousQuestionState,

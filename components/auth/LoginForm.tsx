@@ -11,7 +11,10 @@ import {
   validateLoginValues,
   type AuthFieldErrors,
 } from "@/lib/auth-validation";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import {
+  getFriendlyAuthErrorMessage,
+  getSupabaseBrowserClient,
+} from "@/lib/supabase";
 
 type LoginFormValues = {
   email: string;
@@ -28,7 +31,7 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const { user, loading } = useAuth();
+  const { authError, user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = getSafeRedirectPath(searchParams.get("next"));
@@ -55,6 +58,10 @@ export function LoginForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (pending || loading) {
+      return;
+    }
+
     const trimmedValues = {
       email: values.email.trim(),
       password: values.password,
@@ -70,20 +77,25 @@ export function LoginForm() {
     setFieldErrors({});
     setFormError(null);
 
-    const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: trimmedValues.email,
-      password: trimmedValues.password,
-    });
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: trimmedValues.email,
+        password: trimmedValues.password,
+      });
 
-    if (error) {
-      setFormError(error.message);
+      if (error) {
+        setFormError(getFriendlyAuthErrorMessage(error));
+        return;
+      }
+
+      router.replace(nextPath);
+      router.refresh();
+    } catch (signInError) {
+      setFormError(getFriendlyAuthErrorMessage(signInError));
+    } finally {
       setPending(false);
-      return;
     }
-
-    router.replace(nextPath);
-    router.refresh();
   }
 
   return (
@@ -105,6 +117,15 @@ export function LoginForm() {
       </div>
 
       <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
+        {authError ? (
+          <div
+            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+            role="alert"
+          >
+            {authError}
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <label
             htmlFor="email"

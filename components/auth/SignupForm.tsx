@@ -10,7 +10,10 @@ import {
   validateSignupValues,
   type AuthFieldErrors,
 } from "@/lib/auth-validation";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import {
+  getFriendlyAuthErrorMessage,
+  getSupabaseBrowserClient,
+} from "@/lib/supabase";
 
 type SignupFormValues = {
   fullName: string;
@@ -30,7 +33,7 @@ export function SignupForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const { user, loading } = useAuth();
+  const { authError, user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -56,6 +59,10 @@ export function SignupForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (pending || loading) {
+      return;
+    }
+
     const trimmedValues = {
       fullName: values.fullName.trim(),
       email: values.email.trim(),
@@ -73,33 +80,37 @@ export function SignupForm() {
     setFormError(null);
     setSuccessMessage(null);
 
-    const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: trimmedValues.email,
-      password: trimmedValues.password,
-      options: {
-        data: {
-          full_name: trimmedValues.fullName,
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedValues.email,
+        password: trimmedValues.password,
+        options: {
+          data: {
+            full_name: trimmedValues.fullName,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      setFormError(error.message);
+      if (error) {
+        setFormError(getFriendlyAuthErrorMessage(error));
+        return;
+      }
+
+      if (data.session) {
+        router.replace("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setSuccessMessage(
+        "Account created. Check your inbox to confirm your email, then log in to start practicing."
+      );
+    } catch (signUpError) {
+      setFormError(getFriendlyAuthErrorMessage(signUpError));
+    } finally {
       setPending(false);
-      return;
     }
-
-    if (data.session) {
-      router.replace("/dashboard");
-      router.refresh();
-      return;
-    }
-
-    setSuccessMessage(
-      "Account created. Check your inbox to confirm your email, then log in to start practicing."
-    );
-    setPending(false);
   }
 
   return (
@@ -121,6 +132,15 @@ export function SignupForm() {
       </div>
 
       <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
+        {authError ? (
+          <div
+            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+            role="alert"
+          >
+            {authError}
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <label
             htmlFor="fullName"

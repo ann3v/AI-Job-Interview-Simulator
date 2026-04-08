@@ -7,12 +7,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
+import {
+  getFriendlyAuthErrorMessage,
+  getSupabaseBrowserClient,
+} from "@/lib/supabase";
 import { getUserAvatarStorageKey } from "@/lib/user-profile";
 
 type AuthContextValue = {
   avatarDataUrl: string | null;
+  authError: string | null;
   user: User | null;
   session: Session | null;
   loading: boolean;
@@ -28,67 +32,113 @@ function getStoredAvatarDataUrl(user: User | null) {
     return null;
   }
 
-  return window.localStorage.getItem(getUserAvatarStorageKey(user.id));
+  try {
+    return window.localStorage.getItem(getUserAvatarStorageKey(user.id));
+  } catch (storageError) {
+    console.error("Unable to read avatar from local storage:", storageError);
+    return null;
+  }
+}
+
+function getSupabaseClientOrThrow() {
+  try {
+    return getSupabaseBrowserClient();
+  } catch (supabaseError) {
+    throw new Error(getFriendlyAuthErrorMessage(supabaseError));
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isActive = true;
-    const supabase = getSupabaseBrowserClient();
+    let subscription: { unsubscribe: () => void } | null = null;
 
-    async function restoreSession() {
-      const { data, error } = await supabase.auth.getSession();
+    async function initializeAuth() {
+      let supabase: SupabaseClient;
 
-      if (!isActive) {
+      try {
+        supabase = getSupabaseBrowserClient();
+      } catch (supabaseError) {
+        console.error("Failed to initialize Supabase client:", supabaseError);
+        if (isActive) {
+          setSession(null);
+          setUser(null);
+          setAvatarDataUrl(null);
+          setAuthError(getFriendlyAuthErrorMessage(supabaseError));
+          setLoading(false);
+        }
         return;
       }
 
-      if (error) {
-        console.error("Failed to restore Supabase session:", error.message);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          console.error("Failed to restore Supabase session:", error.message);
+          setSession(null);
+          setUser(null);
+          setAvatarDataUrl(null);
+          setAuthError(getFriendlyAuthErrorMessage(error));
+        } else {
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+          setAvatarDataUrl(getStoredAvatarDataUrl(data.session?.user ?? null));
+          setAuthError(null);
+        }
+      } catch (sessionRestoreError) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("Failed to restore Supabase session:", sessionRestoreError);
         setSession(null);
         setUser(null);
         setAvatarDataUrl(null);
-      } else {
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        setAvatarDataUrl(getStoredAvatarDataUrl(data.session?.user ?? null));
+        setAuthError(getFriendlyAuthErrorMessage(sessionRestoreError));
       }
 
       setLoading(false);
+      const {
+        data: { subscription: nextSubscription },
+      } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        if (!isActive) {
+          return;
+        }
+
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        setAvatarDataUrl(getStoredAvatarDataUrl(nextSession?.user ?? null));
+        setAuthError(null);
+        setLoading(false);
+      });
+
+      subscription = nextSubscription;
     }
 
-    void restoreSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!isActive) {
-        return;
-      }
-
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      setAvatarDataUrl(getStoredAvatarDataUrl(nextSession?.user ?? null));
-      setLoading(false);
-    });
+    void initializeAuth();
 
     return () => {
       isActive = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
   async function signOut() {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getSupabaseClientOrThrow();
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(getFriendlyAuthErrorMessage(error));
     }
   }
 
@@ -102,12 +152,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setAvatarDataUrl(nextAvatarDataUrl);
 
-    if (nextAvatarDataUrl) {
-      window.localStorage.setItem(storageKey, nextAvatarDataUrl);
-      return;
-    }
+    try {
+      if (nextAvatarDataUrl) {
+        window.localStorage.setItem(storageKey, nextAvatarDataUrl);
+        return;
+      }
 
-    window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem(storageKey);
+    } catch (storageError) {
+      console.error("Unable to update avatar in local storage:", storageError);
+      setAvatarDataUrl(getStoredAvatarDataUrl(user));
+      throw new Error(
+        "Unable to save your avatar on this device. Please try again."
+      );
+    }
   }
 
   async function updateDisplayName(fullName: string) {
@@ -121,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("You must be signed in to update your profile.");
     }
 
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getSupabaseClientOrThrow();
     const { data, error } = await supabase.auth.updateUser({
       data: {
         ...(typeof user.user_metadata === "object" && user.user_metadata
@@ -132,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(getFriendlyAuthErrorMessage(error));
     }
 
     if (data.user) {
@@ -144,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         avatarDataUrl,
+        authError,
         user,
         session,
         loading,

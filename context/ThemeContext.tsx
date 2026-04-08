@@ -41,10 +41,14 @@ function getStoredTheme(): Theme {
     return "light";
   }
 
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
 
-  if (storedTheme === "light" || storedTheme === "dark") {
-    return storedTheme;
+    if (storedTheme === "light" || storedTheme === "dark") {
+      return storedTheme;
+    }
+  } catch (storageError) {
+    console.error("Unable to read theme preference from local storage:", storageError);
   }
 
   return getPreferredTheme();
@@ -55,7 +59,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyTheme(theme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (storageError) {
+      console.error("Unable to save theme preference to local storage:", storageError);
+    }
   }, [theme]);
 
   function setTheme(nextTheme: Theme) {

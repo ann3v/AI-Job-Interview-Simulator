@@ -11,6 +11,10 @@ export function LogoutButton() {
   const { signOut } = useAuth();
 
   async function handleSignOut() {
+    if (pending) {
+      return;
+    }
+
     setPending(true);
     setError(null);
 

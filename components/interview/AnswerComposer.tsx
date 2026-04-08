@@ -1,5 +1,6 @@
 import { FormEvent } from "react";
 import { SectionCard } from "@/components/interview/SectionCard";
+import { MAX_ANSWER_LENGTH } from "@/lib/interview";
 
 type AnswerComposerProps = {
   value: string;
@@ -34,6 +35,7 @@ export function AnswerComposer({
             name="answer-input"
             value={value}
             onChange={(event) => onChange(event.target.value)}
+            maxLength={MAX_ANSWER_LENGTH}
             placeholder="Write the answer you would give in a real interview..."
             className="min-h-40 w-full rounded-3xl border border-zinc-300 bg-zinc-50 px-5 py-3.5 text-base leading-7 text-zinc-900 outline-none transition focus:border-sky-500 focus:bg-white sm:min-h-44"
             disabled={loading}

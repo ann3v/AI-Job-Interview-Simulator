@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import {
+  MAX_ANSWER_LENGTH,
+  MAX_HISTORY_MESSAGES,
+  MAX_HISTORY_MESSAGE_LENGTH,
+  MAX_ROLE_LENGTH,
+  getCurrentQuestionText,
+  parseInterviewResponse,
+} from "@/lib/interview";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const MODEL_TIMEOUT_MS = 20000;
+let groqClient: Groq | null = null;
 
 const SYSTEM_PROMPT = `You are InterviewSim AI, a realistic technical interviewer for software engineering students and junior developers.
 
@@ -83,6 +90,20 @@ type ChatMessage = {
   content: string;
 };
 
+function getGroqClient() {
+  if (!process.env.GROQ_API_KEY) {
+    return null;
+  }
+
+  if (!groqClient) {
+    groqClient = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+  }
+
+  return groqClient;
+}
+
 function isChatMessage(value: unknown): value is ChatMessage {
   return (
     typeof value === "object" &&
@@ -94,20 +115,120 @@ function isChatMessage(value: unknown): value is ChatMessage {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getInterviewApiErrorMessage(error: unknown) {
+  if (
+    error instanceof Error &&
+    error.message.toLowerCase().includes("timed out")
+  ) {
+    return "The request is taking longer than expected. Please try again.";
+  }
+
+  return "Failed to generate interview response";
+}
+
+async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Interview request timed out."));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request payload. Please try again." },
+        { status: 400 }
+      );
+    }
+
+    if (!isRecord(body)) {
+      return NextResponse.json(
+        { error: "Invalid request payload. Please try again." },
+        { status: 400 }
+      );
+    }
+
     const candidateAnswer =
       typeof body.candidateAnswer === "string" ? body.candidateAnswer : "";
     const targetRole = typeof body.targetRole === "string" ? body.targetRole : "";
 
     const history: ChatMessage[] = Array.isArray(body.history)
-      ? body.history.filter(isChatMessage)
+      ? body.history.filter(isChatMessage).slice(-MAX_HISTORY_MESSAGES)
       : [];
 
     const trimmedAnswer = candidateAnswer.trim();
     const trimmedRole = targetRole.trim();
     const hasHistory = history.length > 0;
+
+    if (trimmedRole.length > MAX_ROLE_LENGTH) {
+      return NextResponse.json(
+        { error: "That role is too long. Please shorten it and try again." },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedAnswer.length > MAX_ANSWER_LENGTH) {
+      return NextResponse.json(
+        {
+          error:
+            "That input is too long. Please shorten it and try again.",
+        },
+        { status: 413 }
+      );
+    }
+
+    if (
+      history.some((message) => message.content.trim().length > MAX_HISTORY_MESSAGE_LENGTH)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This interview is too large to continue right now. Please start a new session.",
+        },
+        { status: 413 }
+      );
+    }
+
+    if (hasHistory && !trimmedAnswer) {
+      return NextResponse.json(
+        { error: "Please enter something before submitting." },
+        { status: 400 }
+      );
+    }
+
+    const groq = getGroqClient();
+
+    if (!groq) {
+      return NextResponse.json(
+        {
+          error:
+            "The interview assistant is unavailable right now. Please try again later.",
+        },
+        { status: 503 }
+      );
+    }
+
     const roleContext = trimmedRole || "Junior Software Engineer";
     const startPrompt = trimmedRole
       ? `Start the interview for the role "${trimmedRole}". Ask a realistic first technical interview question that fits this role and keep the interview focused on the responsibilities, tools, and expectations for that position.`
@@ -129,31 +250,49 @@ export async function POST(req: Request) {
       },
     ];
 
-    const completion = await groq.chat.completions.create({
-      model: "openai/gpt-oss-120b",
-      temperature: 0.3,
-      messages,
-    });
+    const completion = await withTimeout(
+      groq.chat.completions.create({
+        model: "openai/gpt-oss-120b",
+        temperature: 0.3,
+        messages,
+      }),
+      MODEL_TIMEOUT_MS
+    );
 
     const content = completion.choices[0]?.message?.content;
 
     if (!content) {
       return NextResponse.json(
-        { error: "Empty response from model" },
-        { status: 500 }
+        {
+          error:
+            "The interview assistant returned an empty response. Please try again.",
+        },
+        { status: 502 }
       );
     }
 
-    let parsed;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch {
       return NextResponse.json(
         {
-          error: "Model returned invalid JSON",
-          raw: content,
+          error:
+            "The interview assistant returned an invalid response. Please try again.",
         },
-        { status: 500 }
+        { status: 502 }
+      );
+    }
+
+    const parsedResponse = parseInterviewResponse(parsed);
+
+    if (!getCurrentQuestionText(parsedResponse)) {
+      return NextResponse.json(
+        {
+          error:
+            "The interview assistant returned an incomplete response. Please try again.",
+        },
+        { status: 502 }
       );
     }
 
@@ -161,8 +300,14 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Interview API error:", error);
     return NextResponse.json(
-      { error: "Failed to generate interview response" },
-      { status: 500 }
+      { error: getInterviewApiErrorMessage(error) },
+      {
+        status:
+          error instanceof Error &&
+          error.message.toLowerCase().includes("timed out")
+            ? 504
+            : 500,
+      }
     );
   }
 }

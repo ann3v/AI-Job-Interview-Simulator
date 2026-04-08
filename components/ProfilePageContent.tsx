@@ -32,6 +32,10 @@ export function ProfilePageContent() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (isSaving) {
+      return;
+    }
+
     const normalizedName = name.trim();
 
     if (!normalizedName) {
@@ -89,8 +93,17 @@ export function ProfilePageContent() {
         return;
       }
 
-      updateAvatarDataUrl(reader.result);
-      setAvatarStatus("Avatar updated on this device.");
+      try {
+        updateAvatarDataUrl(reader.result);
+        setAvatarStatus("Avatar updated on this device.");
+      } catch (avatarStorageError) {
+        setAvatarStatus(null);
+        setAvatarError(
+          avatarStorageError instanceof Error
+            ? avatarStorageError.message
+            : "Unable to save your avatar on this device. Please try again."
+        );
+      }
     });
 
     reader.addEventListener("error", () => {
@@ -101,9 +114,18 @@ export function ProfilePageContent() {
   }
 
   function handleRemoveAvatar() {
-    updateAvatarDataUrl(null);
-    setAvatarError(null);
-    setAvatarStatus("Avatar removed.");
+    try {
+      updateAvatarDataUrl(null);
+      setAvatarError(null);
+      setAvatarStatus("Avatar removed.");
+    } catch (avatarStorageError) {
+      setAvatarStatus(null);
+      setAvatarError(
+        avatarStorageError instanceof Error
+          ? avatarStorageError.message
+          : "Unable to remove your avatar on this device. Please try again."
+      );
+    }
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { requestInterview } from "@/lib/interview-client";
 import {
@@ -8,6 +8,9 @@ import {
   CurrentQuestionState,
   InterviewState,
   LastReviewState,
+  MAX_ANSWER_LENGTH,
+  MAX_ROLE_LENGTH,
+  hasRenderableCurrentQuestion,
   serializeAssistantResponse,
   splitInterviewTurn,
 } from "@/lib/interview";
@@ -165,6 +168,7 @@ export function useInterviewSession() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreRetryNonce, setRestoreRetryNonce] = useState(0);
   const [persistenceRevision, setPersistenceRevision] = useState(0);
+  const requestLockRef = useRef(false);
 
   const isStarting = requestState === "starting";
   const isAnswering = requestState === "answering";
@@ -175,6 +179,21 @@ export function useInterviewSession() {
         lastReviewState.followUp ||
         lastReviewState.strongAnswerExample)
   );
+
+  function beginRequest(nextRequestState: RequestState) {
+    if (requestState !== "idle" || requestLockRef.current) {
+      return false;
+    }
+
+    requestLockRef.current = true;
+    setRequestState(nextRequestState);
+    return true;
+  }
+
+  function completeRequest() {
+    requestLockRef.current = false;
+    setRequestState("idle");
+  }
 
   function applyPersistedSessionState(
     session: PersistedInterviewSession,
@@ -265,7 +284,7 @@ export function useInterviewSession() {
   async function startInterview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (requestState !== "idle") {
+    if (!beginRequest("starting")) {
       return;
     }
 
@@ -273,11 +292,17 @@ export function useInterviewSession() {
 
     if (!trimmedRole) {
       setError("Please choose or enter a target role before starting.");
+      completeRequest();
+      return;
+    }
+
+    if (trimmedRole.length > MAX_ROLE_LENGTH) {
+      setError("That input is too long. Please shorten it and try again.");
+      completeRequest();
       return;
     }
 
     setError(null);
-    setRequestState("starting");
 
     try {
       const parsedResponse = await requestInterview({
@@ -285,6 +310,13 @@ export function useInterviewSession() {
         history: [],
         targetRole: trimmedRole,
       });
+
+      if (!hasRenderableCurrentQuestion(parsedResponse)) {
+        throw new Error(
+          "The interview assistant returned an incomplete response. Please try again."
+        );
+      }
+
       const splitTurn = splitInterviewTurn({
         payload: parsedResponse,
         previousQuestionState: null,
@@ -338,14 +370,14 @@ export function useInterviewSession() {
           : "Something went wrong while starting the interview."
       );
     } finally {
-      setRequestState("idle");
+      completeRequest();
     }
   }
 
   async function submitAnswer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (requestState !== "idle") {
+    if (!beginRequest("answering")) {
       return;
     }
 
@@ -353,11 +385,25 @@ export function useInterviewSession() {
 
     if (!trimmedAnswer) {
       setError("Please enter an answer before submitting.");
+      completeRequest();
+      return;
+    }
+
+    if (trimmedAnswer.length > MAX_ANSWER_LENGTH) {
+      setError("That input is too long. Please shorten it and try again.");
+      completeRequest();
+      return;
+    }
+
+    if (!currentQuestionState.questionText) {
+      setError(
+        "The current question is unavailable right now. Please restart the interview and try again."
+      );
+      completeRequest();
       return;
     }
 
     setError(null);
-    setRequestState("answering");
 
     try {
       const nextSubmittedAnswers = submittedAnswers + 1;
@@ -366,6 +412,13 @@ export function useInterviewSession() {
         history,
         targetRole: selectedRole.trim(),
       });
+
+      if (!hasRenderableCurrentQuestion(parsedResponse)) {
+        throw new Error(
+          "The interview assistant returned an incomplete response. Please try again."
+        );
+      }
+
       const splitTurn = splitInterviewTurn({
         payload: parsedResponse,
         previousQuestionState: currentQuestionState,
@@ -435,7 +488,7 @@ export function useInterviewSession() {
           : "Something went wrong while submitting your answer."
       );
     } finally {
-      setRequestState("idle");
+      completeRequest();
     }
   }
 
@@ -478,7 +531,7 @@ export function useInterviewSession() {
   }
 
   async function resumeSession(sessionId: string) {
-    if (!user || requestState !== "idle") {
+    if (!user || requestState !== "idle" || isRestoringSession) {
       return;
     }
 

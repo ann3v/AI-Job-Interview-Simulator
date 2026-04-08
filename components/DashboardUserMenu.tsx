@@ -65,6 +65,10 @@ export function DashboardUserMenu() {
   }, [isOpen]);
 
   async function handleSignOut() {
+    if (pending) {
+      return;
+    }
+
     setPending(true);
     setError(null);
 

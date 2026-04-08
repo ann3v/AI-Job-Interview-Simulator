@@ -1,4 +1,4 @@
-import { ROLE_OPTIONS } from "@/lib/interview";
+import { MAX_ROLE_LENGTH, ROLE_OPTIONS } from "@/lib/interview";
 
 type RoleSelectorProps = {
   value: string;
@@ -21,6 +21,7 @@ export function RoleSelector({
         list="role-options"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        maxLength={MAX_ROLE_LENGTH}
         placeholder="e.g. Junior React Developer"
         className="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition focus:border-sky-500 focus:bg-white"
         aria-describedby="role-hint"
