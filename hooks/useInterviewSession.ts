@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { isTransientRequestError, withTimeout } from "@/lib/async";
 import { requestInterview } from "@/lib/interview-client";
 import {
   ChatMessage,
@@ -110,32 +111,8 @@ function getLastReviewStateFromStoredTurn(
   };
 }
 
-async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    return await Promise.race([
-      task,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error("Restore request timed out."));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
-}
-
 function getFriendlyRestoreErrorMessage(error: unknown) {
-  if (
-    error instanceof Error &&
-    (error.message.toLowerCase().includes("failed to fetch") ||
-      error.message.toLowerCase().includes("network") ||
-      error.message.toLowerCase().includes("timeout"))
-  ) {
+  if (isTransientRequestError(error)) {
     return "Unable to reach Supabase right now. Please check your connection and try again.";
   }
 
@@ -169,6 +146,7 @@ export function useInterviewSession() {
   const [restoreRetryNonce, setRestoreRetryNonce] = useState(0);
   const [persistenceRevision, setPersistenceRevision] = useState(0);
   const requestLockRef = useRef(false);
+  const requestTokenRef = useRef(0);
 
   const isStarting = requestState === "starting";
   const isAnswering = requestState === "answering";
@@ -182,15 +160,24 @@ export function useInterviewSession() {
 
   function beginRequest(nextRequestState: RequestState) {
     if (requestState !== "idle" || requestLockRef.current) {
-      return false;
+      return null;
     }
 
     requestLockRef.current = true;
+    requestTokenRef.current += 1;
     setRequestState(nextRequestState);
-    return true;
+    return requestTokenRef.current;
   }
 
-  function completeRequest() {
+  function isCurrentRequest(requestToken: number) {
+    return requestLockRef.current && requestTokenRef.current === requestToken;
+  }
+
+  function completeRequest(requestToken: number) {
+    if (!isCurrentRequest(requestToken)) {
+      return;
+    }
+
     requestLockRef.current = false;
     setRequestState("idle");
   }
@@ -240,7 +227,8 @@ export function useInterviewSession() {
       try {
         const storedSession = await withTimeout(
           getLatestInProgressInterviewSession(resolvedUserId),
-          RESTORE_TIMEOUT_MS
+          RESTORE_TIMEOUT_MS,
+          "Restore request timed out."
         );
 
         if (!isActive || !storedSession) {
@@ -253,7 +241,8 @@ export function useInterviewSession() {
 
         const latestTurn = await withTimeout(
           getLatestInterviewTurn(storedSession.id, resolvedUserId),
-          RESTORE_TIMEOUT_MS
+          RESTORE_TIMEOUT_MS,
+          "Restore request timed out."
         );
 
         if (!isActive) {
@@ -284,7 +273,9 @@ export function useInterviewSession() {
   async function startInterview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!beginRequest("starting")) {
+    const requestToken = beginRequest("starting");
+
+    if (requestToken === null) {
       return;
     }
 
@@ -292,13 +283,13 @@ export function useInterviewSession() {
 
     if (!trimmedRole) {
       setError("Please choose or enter a target role before starting.");
-      completeRequest();
+      completeRequest(requestToken);
       return;
     }
 
     if (trimmedRole.length > MAX_ROLE_LENGTH) {
       setError("That input is too long. Please shorten it and try again.");
-      completeRequest();
+      completeRequest(requestToken);
       return;
     }
 
@@ -310,6 +301,10 @@ export function useInterviewSession() {
         history: [],
         targetRole: trimmedRole,
       });
+
+      if (!isCurrentRequest(requestToken)) {
+        return;
+      }
 
       if (!hasRenderableCurrentQuestion(parsedResponse)) {
         throw new Error(
@@ -355,29 +350,39 @@ export function useInterviewSession() {
             status: getPersistedSessionStatus(splitTurn.interviewMeta?.status),
           });
 
+          if (!isCurrentRequest(requestToken)) {
+            return;
+          }
+
           setActiveSessionId(session.id);
           setActiveSessionStatus(session.status);
           setPersistenceRevision((currentRevision) => currentRevision + 1);
         } catch (persistenceError) {
           console.error("Failed to create interview session:", persistenceError);
-          setActiveSessionId(null);
+          if (isCurrentRequest(requestToken)) {
+            setActiveSessionId(null);
+          }
         }
       }
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Something went wrong while starting the interview."
-      );
+      if (isCurrentRequest(requestToken)) {
+        setError(
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Something went wrong while starting the interview."
+        );
+      }
     } finally {
-      completeRequest();
+      completeRequest(requestToken);
     }
   }
 
   async function submitAnswer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!beginRequest("answering")) {
+    const requestToken = beginRequest("answering");
+
+    if (requestToken === null) {
       return;
     }
 
@@ -385,13 +390,13 @@ export function useInterviewSession() {
 
     if (!trimmedAnswer) {
       setError("Please enter an answer before submitting.");
-      completeRequest();
+      completeRequest(requestToken);
       return;
     }
 
     if (trimmedAnswer.length > MAX_ANSWER_LENGTH) {
       setError("That input is too long. Please shorten it and try again.");
-      completeRequest();
+      completeRequest(requestToken);
       return;
     }
 
@@ -399,7 +404,7 @@ export function useInterviewSession() {
       setError(
         "The current question is unavailable right now. Please restart the interview and try again."
       );
-      completeRequest();
+      completeRequest(requestToken);
       return;
     }
 
@@ -412,6 +417,10 @@ export function useInterviewSession() {
         history,
         targetRole: selectedRole.trim(),
       });
+
+      if (!isCurrentRequest(requestToken)) {
+        return;
+      }
 
       if (!hasRenderableCurrentQuestion(parsedResponse)) {
         throw new Error(
@@ -464,6 +473,14 @@ export function useInterviewSession() {
               submittedAnswer: trimmedAnswer,
               review: splitTurn.lastReviewState,
             });
+
+            if (!isCurrentRequest(requestToken)) {
+              return;
+            }
+          }
+
+          if (!isCurrentRequest(requestToken)) {
+            return;
           }
 
           await updateInterviewSession({
@@ -476,23 +493,37 @@ export function useInterviewSession() {
             submittedAnswersCount: nextSubmittedAnswers,
             status: nextStatus,
           });
+
+          if (!isCurrentRequest(requestToken)) {
+            return;
+          }
+
           setPersistenceRevision((currentRevision) => currentRevision + 1);
         } catch (persistenceError) {
           console.error("Failed to save interview progress:", persistenceError);
         }
       }
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Something went wrong while submitting your answer."
-      );
+      if (isCurrentRequest(requestToken)) {
+        setError(
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Something went wrong while submitting your answer."
+        );
+      }
     } finally {
-      completeRequest();
+      completeRequest(requestToken);
     }
   }
 
   function resetInterview() {
+    if (requestState !== "idle" || requestLockRef.current) {
+      setError(
+        "Please wait for the current interview request to finish before changing roles."
+      );
+      return;
+    }
+
     const nextStatus =
       activeSessionStatus === "completed"
         ? "completed"

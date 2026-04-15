@@ -12,6 +12,7 @@ import { Pill } from "@/components/interview/Pill";
 import { SectionCard } from "@/components/interview/SectionCard";
 import { useAuth } from "@/context/AuthContext";
 import { useInterviewSession } from "@/hooks/useInterviewSession";
+import { isTransientRequestError, withTimeout } from "@/lib/async";
 import {
   deleteInterviewSession,
   listInterviewSessions,
@@ -55,35 +56,11 @@ function getQuestionPreview(question: string, maxLength = 90) {
 }
 
 function getFriendlyHistoryErrorMessage(error: unknown) {
-  if (
-    error instanceof Error &&
-    (error.message.toLowerCase().includes("failed to fetch") ||
-      error.message.toLowerCase().includes("network") ||
-      error.message.toLowerCase().includes("timeout"))
-  ) {
+  if (isTransientRequestError(error)) {
     return "Unable to reach Supabase right now. Please check your connection and retry.";
   }
 
   return "Unable to load your saved interview sessions right now. Please try again.";
-}
-
-async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    return await Promise.race([
-      task,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error("History request timed out."));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
 }
 
 function getDashboardActionButtonClass({
@@ -211,7 +188,8 @@ export function InterviewDashboard() {
       try {
         const sessions = await withTimeout(
           listInterviewSessions(userId),
-          HISTORY_REQUEST_TIMEOUT_MS
+          HISTORY_REQUEST_TIMEOUT_MS,
+          "History request timed out."
         );
 
         if (!isActive) {
@@ -271,7 +249,8 @@ export function InterviewDashboard() {
       try {
         const turns = await withTimeout(
           listInterviewTurns(sessionId, userId),
-          HISTORY_REQUEST_TIMEOUT_MS
+          HISTORY_REQUEST_TIMEOUT_MS,
+          "History request timed out."
         );
 
         if (!isActive) {
@@ -331,12 +310,14 @@ export function InterviewDashboard() {
     try {
       await withTimeout(
         deleteInterviewSession(sessionId, userId),
-        HISTORY_REQUEST_TIMEOUT_MS
+        HISTORY_REQUEST_TIMEOUT_MS,
+        "History request timed out."
       );
 
       const sessions = await withTimeout(
         listInterviewSessions(userId),
-        HISTORY_REQUEST_TIMEOUT_MS
+        HISTORY_REQUEST_TIMEOUT_MS,
+        "History request timed out."
       );
       setSavedSessions(sessions);
       setHistoryState(sessions.length === 0 ? "empty" : "loaded");
@@ -469,6 +450,7 @@ export function InterviewDashboard() {
             role={selectedRole.trim() || "Selected Role"}
             state={interviewMeta}
             onReset={resetInterview}
+            resetDisabled={isStarting || isAnswering}
           />
           <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr] xl:items-start">
             <CurrentQuestionCard

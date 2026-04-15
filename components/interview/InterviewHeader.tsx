@@ -5,12 +5,14 @@ type InterviewHeaderProps = {
   role: string;
   state: InterviewState | undefined;
   onReset: () => void;
+  resetDisabled?: boolean;
 };
 
 export function InterviewHeader({
   role,
   state,
   onReset,
+  resetDisabled = false,
 }: InterviewHeaderProps) {
   const questionNumber =
     typeof state?.question_number === "number"
@@ -49,7 +51,13 @@ export function InterviewHeader({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50"
+            disabled={resetDisabled}
+            title={
+              resetDisabled
+                ? "Wait for the current response before changing roles."
+                : undefined
+            }
+            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400 disabled:hover:bg-transparent"
           >
             Change Role
           </button>

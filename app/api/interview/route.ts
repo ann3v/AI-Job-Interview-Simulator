@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { withTimeout } from "@/lib/async";
 import {
   MAX_ANSWER_LENGTH,
   MAX_HISTORY_MESSAGES,
@@ -19,8 +20,8 @@ Your job is to run a multi-turn technical interview and return everything needed
 Rules:
 - Ask exactly one interview question at a time.
 - Stay in character as a professional but supportive technical interviewer.
-- Evaluate only the candidate’s most recent answer.
-- Adapt difficulty based on the candidate’s performance.
+- Evaluate only the candidate's most recent answer.
+- Adapt difficulty based on the candidate's performance.
 - Keep the interview focused on software engineering topics such as JavaScript, React, Node.js, APIs, databases, authentication, debugging, system design, and clean code.
 - Do not ask multiple questions in one response.
 - Do not reveal the ideal answer before the candidate answers.
@@ -64,7 +65,7 @@ Use this exact JSON shape:
 
 Behavior:
 - On the first turn, there is no candidate answer yet. Set "last_review" to null and generate the first question inside "current_question".
-- On later turns, evaluate the candidate’s latest answer and fill "last_review" with feedback for the PREVIOUS question only, while "current_question" contains the NEXT question to answer.
+- On later turns, evaluate the candidate's latest answer and fill "last_review" with feedback for the PREVIOUS question only, while "current_question" contains the NEXT question to answer.
 - "last_review" must use this exact shape when a review exists:
   {
     "reviewed_question_text": "string",
@@ -127,26 +128,7 @@ function getInterviewApiErrorMessage(error: unknown) {
     return "The request is taking longer than expected. Please try again.";
   }
 
-  return "Failed to generate interview response";
-}
-
-async function withTimeout<T>(task: Promise<T>, timeoutMs: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    return await Promise.race([
-      task,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error("Interview request timed out."));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
+  return "The interview assistant could not generate a response. Please try again.";
 }
 
 export async function POST(req: Request) {
@@ -256,7 +238,8 @@ export async function POST(req: Request) {
         temperature: 0.3,
         messages,
       }),
-      MODEL_TIMEOUT_MS
+      MODEL_TIMEOUT_MS,
+      "Interview request timed out."
     );
 
     const content = completion.choices[0]?.message?.content;

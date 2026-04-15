@@ -1,3 +1,4 @@
+import { isTransientRequestError } from "@/lib/async";
 import { ChatMessage, isRecord } from "@/lib/interview";
 
 type RequestInterviewParams = {
@@ -76,12 +77,7 @@ export async function requestInterview({
       throw new Error("The request is taking longer than expected. Please try again.");
     }
 
-    if (
-      requestError instanceof Error &&
-      (requestError.message.toLowerCase().includes("failed to fetch") ||
-        requestError.message.toLowerCase().includes("network") ||
-        requestError.message.toLowerCase().includes("load failed"))
-    ) {
+    if (isTransientRequestError(requestError)) {
       throw new Error(
         "Unable to reach the interview service. Please check your connection and try again."
       );

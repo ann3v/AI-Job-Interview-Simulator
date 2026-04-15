@@ -17,12 +17,15 @@ export function AnswerComposer({
   error,
   loading,
 }: AnswerComposerProps) {
+  const trimmedLength = value.trim().length;
+  const isSubmitDisabled = loading || trimmedLength === 0;
+
   return (
     <SectionCard
       title="Your Answer"
       subtitle="Keep your answer concise, explain your reasoning, and include practical tradeoffs when relevant."
     >
-      <form className="space-y-3" onSubmit={onSubmit}>
+      <form className="space-y-3" onSubmit={onSubmit} aria-busy={loading}>
         <div className="space-y-1.5">
           <label
             htmlFor="answer-input"
@@ -52,13 +55,20 @@ export function AnswerComposer({
         ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-zinc-500">
-            Submit one answer at a time. The next question will appear above
-            after the AI evaluates this response.
-          </p>
+          <div className="space-y-1 text-sm leading-6 text-zinc-500">
+            <p>
+              Submit one answer at a time. The next question will appear above
+              after the AI evaluates this response.
+            </p>
+            <p>
+              {trimmedLength === 0
+                ? "Write at least a short answer to enable submission."
+                : `${value.length}/${MAX_ANSWER_LENGTH} characters`}
+            </p>
+          </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitDisabled}
             className="inline-flex min-w-40 items-center justify-center gap-3 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
           >
             {loading ? (
