@@ -1,8 +1,10 @@
 # AI Job Interview Simulator
 
-Live demo: https://ai-interview-seven-gold.vercel.app/
-
 AI Job Interview Simulator is a university project that helps users practice technical job interviews. A signed-in user chooses a target role, answers one AI-generated question at a time, receives structured feedback, and can review saved sessions later.
+
+## Live Demo
+
+https://ai-interview-seven-gold.vercel.app/
 
 ## Demo-Ready Summary
 
@@ -59,7 +61,7 @@ Notes:
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are used by the browser Supabase client for auth and persistence.
 - Supabase persistence expects interview session and turn tables that match the fields used in `lib/interview-store.ts`.
 
-## Run Locally
+## How to Run Locally
 
 1. Install dependencies:
 

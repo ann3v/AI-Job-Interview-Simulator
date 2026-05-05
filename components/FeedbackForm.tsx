@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
+const FEEDBACK_STORAGE_KEY = "interviewsim:last-feedback-note";
+
 export function FeedbackForm() {
   const { user } = useAuth();
   const [feedback, setFeedback] = useState("");
@@ -25,16 +27,17 @@ export function FeedbackForm() {
     setError(null);
 
     try {
-      console.log("Feedback submission", {
+      window.localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify({
         email: user?.email ?? null,
         message: normalizedFeedback,
         submittedAt: new Date().toISOString(),
         userId: user?.id ?? null,
-      });
+      }));
       setFeedback("");
-      setStatus(
-        "Feedback submitted to the mock handler. You can wire this form to a real endpoint later."
-      );
+      setStatus("Feedback saved locally for this browser.");
+    } catch {
+      setError("Unable to save feedback locally. Please try again.");
+      setStatus(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -68,7 +71,7 @@ export function FeedbackForm() {
           {isSubmitting ? "Submitting..." : "Submit Feedback"}
         </button>
         <p className="text-sm text-zinc-600">
-          This currently writes to the browser console as a mock submission.
+          Feedback is saved locally for review after the demo.
         </p>
       </div>
 

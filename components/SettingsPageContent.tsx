@@ -1,65 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { DashboardPageHeading } from "@/components/DashboardPageHeading";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { SectionCard } from "@/components/interview/SectionCard";
 import { useTheme } from "@/context/ThemeContext";
 
-const inputClassName =
-  "w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100";
-
 export function SettingsPageContent() {
   const { setTheme, theme } = useTheme();
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
-  const [passwords, setPasswords] = useState({
-    confirmPassword: "",
-    currentPassword: "",
-    newPassword: "",
-  });
-
-  function handlePasswordFieldChange(
-    field: "confirmPassword" | "currentPassword" | "newPassword",
-    value: string
-  ) {
-    setPasswords((currentValue) => ({
-      ...currentValue,
-      [field]: value,
-    }));
-  }
-
-  function handlePasswordSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPasswordError(null);
-
-    if (
-      !passwords.currentPassword.trim() ||
-      !passwords.newPassword.trim() ||
-      !passwords.confirmPassword.trim()
-    ) {
-      setPasswordStatus(null);
-      setPasswordError("Fill in all password fields to continue.");
-      return;
-    }
-
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      setPasswordStatus(null);
-      setPasswordError("New password and confirmation must match.");
-      return;
-    }
-
-    setPasswordStatus(
-      "Password change UI is ready, but the backend submission is not connected yet."
-    );
-  }
 
   return (
     <div className="space-y-6">
       <DashboardPageHeading
         eyebrow="Settings"
         title="Preferences and access"
-        description="Choose a theme, review password settings, and send product feedback from one place."
+        description="Choose a theme, review account access, and send product feedback from one place."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.45fr_0.55fr]">
@@ -97,90 +51,14 @@ export function SettingsPageContent() {
         </SectionCard>
 
         <SectionCard
-          title="Password"
-          subtitle="The interface is in place for password updates while backend wiring is still pending."
+          title="Account Access"
+          subtitle="Authentication is managed through Supabase sign-in for this demo build."
         >
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label
-                htmlFor="currentPassword"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Current password
-              </label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={passwords.currentPassword}
-                onChange={(event) =>
-                  handlePasswordFieldChange("currentPassword", event.target.value)
-                }
-                autoComplete="current-password"
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="newPassword"
-                className="text-sm font-medium text-zinc-700"
-              >
-                New password
-              </label>
-              <input
-                id="newPassword"
-                type="password"
-                value={passwords.newPassword}
-                onChange={(event) =>
-                  handlePasswordFieldChange("newPassword", event.target.value)
-                }
-                autoComplete="new-password"
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="confirmPassword"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Confirm new password
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={passwords.confirmPassword}
-                onChange={(event) =>
-                  handlePasswordFieldChange("confirmPassword", event.target.value)
-                }
-                autoComplete="new-password"
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="submit"
-                className="inline-flex items-center rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-              >
-                Save Password
-              </button>
-              <p className="text-sm text-zinc-600">
-                Submitting this currently shows a placeholder state only.
-              </p>
-            </div>
-
-            {passwordError ? (
-              <p className="text-sm text-red-600" role="alert">
-                {passwordError}
-              </p>
-            ) : null}
-            {passwordStatus ? (
-              <p className="text-sm text-amber-600" role="status">
-                {passwordStatus}
-              </p>
-            ) : null}
-          </form>
+          <div className="rounded-3xl bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
+            Demo accounts use the same Supabase authentication path shown in the
+            login and logout flow. Prepare a known demo email and password before
+            presenting.
+          </div>
         </SectionCard>
       </div>
 
