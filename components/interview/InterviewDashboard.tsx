@@ -351,6 +351,18 @@ export function InterviewDashboard() {
     await resumeSession(sessionId);
   }
 
+  async function handleHistorySessionOpen(session: PersistedInterviewSession) {
+    setSelectedSessionId(session.id);
+
+    if (session.status === "in_progress") {
+      await resumeSession(session.id);
+      setActiveModal(null);
+      return;
+    }
+
+    setActiveModal("details");
+  }
+
   function openSessionDetailsModal() {
     if (!selectedSessionId && activeSessionId) {
       setSelectedSessionId(activeSessionId);
@@ -576,7 +588,6 @@ export function InterviewDashboard() {
                 const isActiveSession = session.id === activeSessionId;
                 const canResume =
                   session.status === "in_progress" &&
-                  !hasStarted &&
                   !isRestoringSession;
                 const isDeleting = deletingSessionId === session.id;
 
@@ -585,14 +596,16 @@ export function InterviewDashboard() {
                     key={session.id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedSessionId(session.id)}
+                    onClick={() => {
+                      void handleHistorySessionOpen(session);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        setSelectedSessionId(session.id);
+                        void handleHistorySessionOpen(session);
                       }
                     }}
-                    className={`w-full rounded-3xl border p-4 text-left transition ${
+                    className={`w-full cursor-pointer rounded-3xl border p-4 text-left transition ${
                       isSelected
                         ? "border-sky-300 bg-sky-50"
                         : "border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-white"
@@ -631,7 +644,7 @@ export function InterviewDashboard() {
                             }}
                             className="inline-flex items-center rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-zinc-800"
                           >
-                            Resume
+                            Open Session
                           </button>
                         ) : null}
                         <button
