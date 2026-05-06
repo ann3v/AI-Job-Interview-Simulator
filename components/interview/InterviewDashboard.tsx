@@ -354,8 +354,12 @@ export function InterviewDashboard() {
   async function handleHistorySessionOpen(session: PersistedInterviewSession) {
     setSelectedSessionId(session.id);
 
-    if (session.status === "in_progress") {
-      await resumeSession(session.id);
+    if (session.currentQuestionText) {
+      const didResume = await resumeSession(session.id);
+      if (!didResume) {
+        return;
+      }
+
       setActiveModal(null);
       return;
     }
@@ -586,9 +590,9 @@ export function InterviewDashboard() {
               {savedSessions.map((session) => {
                 const isSelected = session.id === selectedSessionId;
                 const isActiveSession = session.id === activeSessionId;
-                const canResume =
-                  session.status === "in_progress" &&
-                  !isRestoringSession;
+                const canResume = Boolean(
+                  session.currentQuestionText && !isRestoringSession
+                );
                 const isDeleting = deletingSessionId === session.id;
 
                 return (

@@ -563,7 +563,7 @@ export function useInterviewSession() {
 
   async function resumeSession(sessionId: string) {
     if (!user || requestState !== "idle" || isRestoringSession) {
-      return;
+      return false;
     }
 
     setIsRestoringSession(true);
@@ -572,18 +572,35 @@ export function useInterviewSession() {
     try {
       const storedSession = await getInterviewSessionById(sessionId, user.id);
 
-      if (!storedSession || storedSession.status !== "in_progress") {
-        throw new Error("Only in-progress sessions can be resumed.");
+      if (!storedSession) {
+        throw new Error("Unable to find this interview session.");
       }
 
+      if (!storedSession.currentQuestionText) {
+        throw new Error(
+          "This session does not have a next question saved, so it cannot be continued."
+        );
+      }
+
+      const resumableSession =
+        storedSession.status === "in_progress"
+          ? storedSession
+          : await updateInterviewSessionStatus({
+              sessionId,
+              userId: user.id,
+              status: "in_progress",
+            });
       const latestTurn = await getLatestInterviewTurn(sessionId, user.id);
-      applyPersistedSessionState(storedSession, latestTurn);
+      applyPersistedSessionState(resumableSession, latestTurn);
+      setPersistenceRevision((currentRevision) => currentRevision + 1);
+      return true;
     } catch (resumeError) {
       setError(
         resumeError instanceof Error
           ? resumeError.message
           : "Unable to resume this interview right now."
       );
+      return false;
     } finally {
       setIsRestoringSession(false);
     }
