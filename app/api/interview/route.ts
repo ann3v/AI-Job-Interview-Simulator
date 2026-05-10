@@ -29,6 +29,9 @@ Rules:
 - If the candidate answer is missing, this is the first turn: start the interview.
 - If the candidate answer is weak or incomplete, give constructive feedback and ask a follow-up or easier next question.
 - If the candidate answer is strong, acknowledge it briefly and continue with a relevant next question.
+- Score strictly and fairly. Random text, gibberish, placeholder text, unrelated answers, copied question text, or "I don't know" style non-answers must receive a score of 0.
+- Give scores from 1 to 3 only when the answer is a real attempt but mostly incorrect, too vague, or missing key details.
+- Give scores from 4 to 6 for partially correct answers with meaningful gaps, 7 to 8 for solid answers, and 9 to 10 only for excellent, specific, interview-ready answers.
 - Keep responses concise, structured, and practical for UI rendering.
 - Keep the review of the previous answer completely separate from the next active question.
 - Never put the strong answer example for the next unanswered question inside the review of the previous answer.
@@ -80,7 +83,7 @@ Behavior:
     "follow_up": "string",
     "strong_answer_example": "string"
   }
-- "score" must be an integer from 0 to 10 when evaluating an answer.
+- "score" must be an integer from 0 to 10 when evaluating an answer. Use 0 for non-answers, gibberish, empty filler, or unrelated responses.
 - "difficulty" must be one of: easy, medium, hard.
 - "candidate_level_estimate" must be one of: beginner, junior, intermediate.
 - "follow_up" should be "NONE" if no follow-up is needed.
@@ -119,6 +122,155 @@ function isChatMessage(value: unknown): value is ChatMessage {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function getLetterCount(value: string) {
+  return value.replace(/[^a-z]/gi, "").length;
+}
+
+function getLongestConsonantRun(value: string) {
+  const consonantRuns = value.toLowerCase().match(/[bcdfghjklmnpqrstvwxyz]{5,}/g);
+
+  return consonantRuns?.reduce(
+    (longestRun, run) => Math.max(longestRun, run.length),
+    0
+  ) ?? 0;
+}
+
+function isObviousNonAnswer(answer: string) {
+  const normalized = answer.toLowerCase().replace(/[\s._-]+/g, " ").trim();
+  const compactLetters = normalized.replace(/[^a-z]/g, "");
+  const words = normalized
+    .split(/\s+/)
+    .filter((word) => /[a-z0-9]/i.test(word));
+  const uniqueLetters = new Set(compactLetters).size;
+  const letterCount = getLetterCount(normalized);
+  const vowelCount = (compactLetters.match(/[aeiou]/g) ?? []).length;
+  const vowelRatio = letterCount > 0 ? vowelCount / letterCount : 0;
+  const uniqueLetterRatio =
+    letterCount > 0 ? uniqueLetters / letterCount : 0;
+
+  if (!normalized || letterCount < 3) {
+    return true;
+  }
+
+  if (
+    /^(i don'?t know|idk|no idea|not sure|skip|pass|test|testing|asdf+|qwerty+|n\/a|none|null|nothing|blah+|random)$/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (words.length <= 2 && letterCount >= 8) {
+    return (
+      getLongestConsonantRun(normalized) >= 5 ||
+      uniqueLetterRatio <= 0.45 ||
+      vowelRatio <= 0.12
+    );
+  }
+
+  return false;
+}
+
+function normalizeForComparison(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getMeaningfulWords(value: string) {
+  return normalizeForComparison(value)
+    .split(" ")
+    .filter((word) => word.length > 3);
+}
+
+function isCopiedQuestionAnswer(answer: string, question: string | null) {
+  if (!question) {
+    return false;
+  }
+
+  const normalizedAnswer = normalizeForComparison(answer);
+  const normalizedQuestion = normalizeForComparison(question);
+
+  if (!normalizedAnswer || !normalizedQuestion) {
+    return false;
+  }
+
+  if (normalizedAnswer === normalizedQuestion) {
+    return true;
+  }
+
+  const answerWords = new Set(getMeaningfulWords(normalizedAnswer));
+  const questionWords = new Set(getMeaningfulWords(normalizedQuestion));
+
+  if (answerWords.size < 5 || questionWords.size < 5) {
+    return false;
+  }
+
+  const overlappingWords = [...answerWords].filter((word) =>
+    questionWords.has(word)
+  ).length;
+
+  return (
+    overlappingWords / answerWords.size >= 0.8 &&
+    overlappingWords / questionWords.size >= 0.5
+  );
+}
+
+function getLatestQuestionFromHistory(history: ChatMessage[]) {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const message = history[index];
+
+    if (message.role !== "assistant") {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(message.content) as unknown;
+      const question = getCurrentQuestionText(parseInterviewResponse(parsed));
+
+      if (question) {
+        return question;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function applyNonAnswerEvaluation(parsed: unknown) {
+  if (!isRecord(parsed)) {
+    return;
+  }
+
+  const review = isRecord(parsed.last_review) ? parsed.last_review : {};
+  const existingStrongAnswer =
+    typeof review.strong_answer_example === "string"
+      ? review.strong_answer_example
+      : "";
+
+  review.evaluation = {
+    score: 0,
+    correctness:
+      "No usable answer was provided, so it cannot be considered correct.",
+    clarity:
+      "The response is random, empty filler, or does not communicate a real answer.",
+    depth:
+      "There is no relevant explanation, example, reasoning, or role-specific detail.",
+  };
+  review.feedback =
+    "This response does not answer the interview question. Random text, placeholder text, or unrelated input receives a 0 because there is nothing meaningful to evaluate.";
+  review.follow_up =
+    "Try again with a real answer that directly addresses the question, even if it is short.";
+  review.strong_answer_example =
+    existingStrongAnswer ||
+    "A stronger answer would directly address the question, explain your reasoning, and include a concrete example from the role or a realistic workplace situation.";
+  parsed.last_review = review;
 }
 
 function getInterviewApiErrorMessage(error: unknown) {
@@ -213,12 +365,16 @@ export async function POST(req: Request) {
     }
 
     const roleContext = trimmedRole || "Entry-Level Professional";
+    const latestQuestion = getLatestQuestionFromHistory(history);
     const startPrompt = trimmedRole
       ? `Start the interview for the role "${trimmedRole}". Ask a realistic first interview question that fits this role and keep the interview focused on the responsibilities, tools, and expectations for that position.`
       : "Start the interview for an entry-level professional candidate. Ask a realistic first interview question that fits a general job interview.";
+    const gradingContext = latestQuestion
+      ? `Previous active interview question: ${latestQuestion}\n`
+      : "";
     const answerPrompt = trimmedRole
-      ? `Candidate is interviewing for the role "${roleContext}". Candidate answer: ${trimmedAnswer}\nContinue the interview.`
-      : `Candidate answer: ${trimmedAnswer}\nContinue the interview.`;
+      ? `Candidate is interviewing for the role "${roleContext}". ${gradingContext}Candidate answer: ${trimmedAnswer}\nEvaluate this answer against the previous active interview question. Continue the interview.`
+      : `${gradingContext}Candidate answer: ${trimmedAnswer}\nEvaluate this answer against the previous active interview question. Continue the interview.`;
 
     const messages = [
       { role: "system" as const, content: SYSTEM_PROMPT },
@@ -278,6 +434,14 @@ export async function POST(req: Request) {
         },
         { status: 502 }
       );
+    }
+
+    if (
+      hasHistory &&
+      (isObviousNonAnswer(trimmedAnswer) ||
+        isCopiedQuestionAnswer(trimmedAnswer, latestQuestion))
+    ) {
+      applyNonAnswerEvaluation(parsed);
     }
 
     return NextResponse.json(parsed);
