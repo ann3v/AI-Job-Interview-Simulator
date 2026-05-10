@@ -1,5 +1,5 @@
 import { FormEvent } from "react";
-import { FEATURED_ROLE_OPTIONS, ROLE_OPTIONS } from "@/lib/interview";
+import { FEATURED_ROLE_OPTIONS } from "@/lib/interview";
 import { Pill } from "@/components/interview/Pill";
 import { RoleSelector } from "@/components/interview/RoleSelector";
 
@@ -26,7 +26,7 @@ export function InterviewSetup({
         <div className="border-b border-zinc-200 bg-linear-to-r from-zinc-950 via-zinc-900 to-sky-900 px-6 py-8 text-white sm:px-8 sm:py-10">
           <Pill tone="accent">Interview Practice</Pill>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            Walk into your next technical interview with a clear game plan.
+            Walk into your next interview with a clear game plan.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-200 sm:text-lg">
             Choose your target role, start the session, and answer one interview
@@ -41,20 +41,6 @@ export function InterviewSetup({
             onChange={onRoleChange}
             disabled={loading}
           />
-
-          <div className="flex flex-wrap gap-2">
-            {ROLE_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => onRolePick(option)}
-                className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-                disabled={loading}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
 
           {error ? (
             <div
@@ -96,9 +82,17 @@ export function InterviewSetup({
           >
             <p className="text-sm font-semibold text-zinc-950">{featuredRole}</p>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              A good choice if you want focused, role-specific interview
-              questions without extra setup.
+              A quick start option for focused, role-specific interview
+              practice.
             </p>
+            <button
+              type="button"
+              onClick={() => onRolePick(featuredRole)}
+              className="mt-4 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+              disabled={loading}
+            >
+              Use this role
+            </button>
           </div>
         ))}
       </section>

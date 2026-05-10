@@ -2,15 +2,15 @@
 
 ## 1. Project Overview
 
-AI Job Interview Simulator is a web application that helps students and junior developers practice technical job interviews in a realistic, guided environment. A signed-in user selects a target role, receives one AI-generated interview question at a time, submits an answer, and gets structured feedback with a score, strengths, improvement areas, follow-up guidance, and a stronger sample answer.
+AI Job Interview Simulator is a web application that helps users practice role-specific job interviews in a realistic, guided environment. A signed-in user types or selects a target role, receives one AI-generated interview question at a time, submits an answer, and gets structured feedback with a score, strengths, improvement areas, follow-up guidance, and a stronger sample answer.
 
-The target users are university students, junior software engineers, career changers, and anyone preparing for entry-level technical interviews. The project solves the problem of interview preparation being hard to practice consistently without another person present. It gives users immediate, role-specific feedback and saves practice sessions so progress can be reviewed later.
+The target users are university students, career changers, early-career professionals, and anyone preparing for entry-level or role-specific interviews. The project solves the problem of interview preparation being hard to practice consistently without another person present. It gives users immediate, role-specific feedback and saves practice sessions so progress can be reviewed later.
 
 ## 2. Demo Flow (5-7 Minutes Structured Timeline)
 
 **0:00-0:45 - Introduction**
 
-Introduce the problem: students need realistic technical interview practice and fast feedback. Present the app as a focused interview practice dashboard with AI question generation, feedback, authentication, and saved history.
+Introduce the problem: students and job seekers need realistic interview practice and fast feedback. Present the app as a focused interview practice dashboard with AI question generation, feedback, authentication, and saved history.
 
 **0:45-1:30 - Landing Page and Login**
 
@@ -18,7 +18,7 @@ Open the live demo URL, briefly show the landing page value proposition, then lo
 
 **1:30-2:15 - Start a Role-Specific Interview**
 
-On the dashboard, choose a strong demo role such as "Junior React Developer" or "Full Stack Intern". Start the interview and show that the app generates a realistic first technical question with focus areas.
+On the dashboard, choose a strong demo role such as "Frontend Engineer", "Nurse", or "Sales Representative". Start the interview and show that the app generates a realistic first question with focus areas.
 
 **2:15-3:45 - Submit an Answer and Receive Feedback**
 

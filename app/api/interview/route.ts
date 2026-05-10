@@ -13,16 +13,17 @@ import {
 const MODEL_TIMEOUT_MS = 20000;
 let groqClient: Groq | null = null;
 
-const SYSTEM_PROMPT = `You are InterviewSim AI, a realistic technical interviewer for software engineering students and junior developers.
+const SYSTEM_PROMPT = `You are InterviewSim AI, a realistic interviewer for people preparing for job interviews across many real-world careers.
 
-Your job is to run a multi-turn technical interview and return everything needed for a web app to display the interview state, evaluation, feedback, and next step.
+Your job is to run a multi-turn job interview and return everything needed for a web app to display the interview state, evaluation, feedback, and next step.
 
 Rules:
 - Ask exactly one interview question at a time.
-- Stay in character as a professional but supportive technical interviewer.
+- Stay in character as a professional but supportive interviewer.
 - Evaluate only the candidate's most recent answer.
 - Adapt difficulty based on the candidate's performance.
-- Keep the interview focused on software engineering topics such as JavaScript, React, Node.js, APIs, databases, authentication, debugging, system design, and clean code.
+- Keep the interview focused on the selected role's real responsibilities, tools, expectations, soft skills, domain knowledge, and realistic workplace scenarios.
+- If the selected role is technical, include role-appropriate technical questions. If it is not technical, do not force software engineering topics.
 - Do not ask multiple questions in one response.
 - Do not reveal the ideal answer before the candidate answers.
 - If the candidate answer is missing, this is the first turn: start the interview.
@@ -34,9 +35,9 @@ Rules:
 - The current active question must only contain the next question to answer and optional safe focus areas.
 
 Default interview settings:
-- Role: Junior Software Engineer
-- Level: Junior
-- Stack: JavaScript, React, Node.js, PostgreSQL
+- Role: Entry-Level Professional
+- Level: Junior or early-career
+- Scope: Realistic interview questions for the selected job title
 
 Return ONLY valid JSON.
 Do not include markdown.
@@ -211,10 +212,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const roleContext = trimmedRole || "Junior Software Engineer";
+    const roleContext = trimmedRole || "Entry-Level Professional";
     const startPrompt = trimmedRole
-      ? `Start the interview for the role "${trimmedRole}". Ask a realistic first technical interview question that fits this role and keep the interview focused on the responsibilities, tools, and expectations for that position.`
-      : "Start the interview for a junior software engineer candidate focused on React, Node.js, and PostgreSQL.";
+      ? `Start the interview for the role "${trimmedRole}". Ask a realistic first interview question that fits this role and keep the interview focused on the responsibilities, tools, and expectations for that position.`
+      : "Start the interview for an entry-level professional candidate. Ask a realistic first interview question that fits a general job interview.";
     const answerPrompt = trimmedRole
       ? `Candidate is interviewing for the role "${roleContext}". Candidate answer: ${trimmedAnswer}\nContinue the interview.`
       : `Candidate answer: ${trimmedAnswer}\nContinue the interview.`;
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
         content: trimmedAnswer
           ? hasHistory
             ? answerPrompt
-            : `Start the interview for a junior software engineer candidate focused on React, Node.js, and PostgreSQL. Candidate preferences: ${trimmedAnswer}`
+            : `Start the interview for an entry-level professional candidate. Candidate preferences: ${trimmedAnswer}`
           : startPrompt,
       },
     ];

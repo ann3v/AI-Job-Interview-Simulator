@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Job Interview Simulator",
-  description: "Practice technical interview prompts and review AI feedback.",
+  description: "Practice role-specific job interviews and review AI feedback.",
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 # AI Job Interview Simulator
 
-AI Job Interview Simulator is a university project that helps users practice technical job interviews. A signed-in user chooses a target role, answers one AI-generated question at a time, receives structured feedback, and can review saved sessions later.
+AI Job Interview Simulator is a university project that helps users practice role-specific job interviews. A signed-in user chooses or types a target role, answers one AI-generated question at a time, receives structured feedback, and can review saved sessions later.
 
 ## Live Demo
 
@@ -13,8 +13,8 @@ In about 20 seconds: this app is a Next.js interview practice dashboard. Supabas
 ## Key Features
 
 - Supabase sign up, login, protected dashboard, and session restore.
-- Role selection with preset roles and a custom role input.
-- AI-generated interview questions for software engineering roles.
+- Searchable role input with autocomplete suggestions and custom job titles.
+- AI-generated interview questions for real-world roles across different fields.
 - One-answer-at-a-time submission with duplicate-submit protection.
 - Structured review after each answer: score, correctness, clarity, depth, feedback, follow-up, and strong answer example.
 - Saved interview history with session details and recorded turns.
@@ -93,7 +93,7 @@ npx tsc --noEmit
 ## How The Interview Flow Works
 
 1. The user signs in with Supabase and opens the protected dashboard.
-2. The app checks Supabase for the latest in-progress interview session.
+2. The app checks Supabase for the latest saved interview that has a next question ready.
 3. The user selects or types a target role and starts the interview.
 4. The frontend calls `POST /api/interview`.
 5. The route handler sends the role, latest answer, and compact conversation history to Groq.
@@ -121,10 +121,12 @@ npx tsc --noEmit
 
 - The app depends on valid Groq and Supabase credentials.
 - AI feedback quality depends on the model response returned by Groq.
-- The current project focuses on text-based interviews, not voice interviews or live coding.
+- The current project focuses on text-based interviews, not voice interviews, live coding, or formal role-specific credential testing.
+- Users can type any job title, but highly specialized roles still depend on the AI model's available knowledge.
 - Persistence requires the Supabase tables expected by `lib/interview-store.ts`.
 - If Groq or Supabase is slow or unavailable, the UI keeps the user in the current safe state and shows a retry-oriented error.
 
 ## Author
 
 Built by Ardit Avdiu as part of a university project.
+ 

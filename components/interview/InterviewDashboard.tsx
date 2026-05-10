@@ -412,29 +412,29 @@ export function InterviewDashboard() {
       {isRestoringSession ? (
         <SectionCard
           title="Restoring Session"
-          subtitle="Checking Supabase for an in-progress interview so you can pick up where you left off."
+          subtitle="Checking Supabase for a saved interview you can continue."
         >
           <div className="flex items-center gap-3 rounded-3xl bg-zinc-50 p-5 text-sm font-medium text-zinc-600">
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-950" />
-            Restoring your latest interview...
+            Restoring your latest saved interview...
           </div>
         </SectionCard>
       ) : !hasStarted ? (
         <>
           {restoreState === "empty" ? (
             <SectionCard
-              title="No In-Progress Interview"
-              subtitle="No in-progress interview found. Start a new practice session or review your saved sessions below."
+              title="No Interview Ready to Continue"
+              subtitle="No saved session with a next question was found. Start a new practice session or review older sessions below."
             >
               <div className="rounded-3xl bg-zinc-50 p-5 text-sm leading-6 text-zinc-600">
-                No in-progress interview found.
+                No continuable interview session found.
               </div>
             </SectionCard>
           ) : null}
           {restoreState === "error" ? (
             <SectionCard
               title="Restore Failed"
-              subtitle="The dashboard could not restore your latest in-progress interview."
+              subtitle="The dashboard could not restore your latest saved interview."
             >
               <div className="space-y-4 rounded-3xl bg-zinc-50 p-5">
                 <p className="text-sm leading-6 text-zinc-600">

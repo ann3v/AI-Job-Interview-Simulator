@@ -19,7 +19,7 @@ import {
   createInterviewSession,
   createInterviewTurn,
   getInterviewSessionById,
-  getLatestInProgressInterviewSession,
+  getLatestContinuableInterviewSession,
   getLatestInterviewTurn,
   type PersistedInterviewSession,
   type PersistedInterviewSessionStatus,
@@ -223,10 +223,10 @@ export function useInterviewSession() {
 
     let isActive = true;
 
-    async function restoreInProgressSession() {
+    async function restoreContinuableSession() {
       try {
         const storedSession = await withTimeout(
-          getLatestInProgressInterviewSession(resolvedUserId),
+          getLatestContinuableInterviewSession(resolvedUserId),
           RESTORE_TIMEOUT_MS,
           "Restore request timed out."
         );
@@ -239,8 +239,20 @@ export function useInterviewSession() {
           return;
         }
 
+        const resumableSession =
+          storedSession.status === "in_progress"
+            ? storedSession
+            : await withTimeout(
+                updateInterviewSessionStatus({
+                  sessionId: storedSession.id,
+                  userId: resolvedUserId,
+                  status: "in_progress",
+                }),
+                RESTORE_TIMEOUT_MS,
+                "Restore request timed out."
+              );
         const latestTurn = await withTimeout(
-          getLatestInterviewTurn(storedSession.id, resolvedUserId),
+          getLatestInterviewTurn(resumableSession.id, resolvedUserId),
           RESTORE_TIMEOUT_MS,
           "Restore request timed out."
         );
@@ -249,7 +261,7 @@ export function useInterviewSession() {
           return;
         }
 
-        applyPersistedSessionState(storedSession, latestTurn);
+        applyPersistedSessionState(resumableSession, latestTurn);
       } catch (restoreError) {
         console.error("Failed to restore interview session:", restoreError);
         if (isActive) {
@@ -263,7 +275,7 @@ export function useInterviewSession() {
       }
     }
 
-    void restoreInProgressSession();
+    void restoreContinuableSession();
 
     return () => {
       isActive = false;

@@ -379,6 +379,25 @@ export async function getLatestInProgressInterviewSession(userId: string) {
   return data ? mapSessionRow(data) : null;
 }
 
+export async function getLatestContinuableInterviewSession(userId: string) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select(INTERVIEW_SESSION_COLUMNS)
+    .eq("user_id", userId)
+    .not("current_question_text", "is", null)
+    .neq("current_question_text", "")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<InterviewSessionRow>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapSessionRow(data) : null;
+}
+
 export async function getLatestInterviewTurn(sessionId: string, userId: string) {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase
