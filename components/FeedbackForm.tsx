@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 const FEEDBACK_STORAGE_KEY = "interviewsim:last-feedback-note";
+const MAX_FEEDBACK_LENGTH = 4000;
 
 export function FeedbackForm() {
   const { user } = useAuth();
@@ -25,18 +26,47 @@ export function FeedbackForm() {
 
     setIsSubmitting(true);
     setError(null);
+    setStatus(null);
+
+    const feedbackPayload = {
+      email: user?.email ?? null,
+      message: normalizedFeedback,
+      submittedAt: new Date().toISOString(),
+      userId: user?.id ?? null,
+    };
 
     try {
-      window.localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify({
-        email: user?.email ?? null,
-        message: normalizedFeedback,
-        submittedAt: new Date().toISOString(),
-        userId: user?.id ?? null,
-      }));
+      window.localStorage.setItem(
+        FEEDBACK_STORAGE_KEY,
+        JSON.stringify(feedbackPayload)
+      );
+
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(feedbackPayload),
+      });
+
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ?? "Unable to send feedback right now. Please try again."
+        );
+      }
+
       setFeedback("");
-      setStatus("Feedback saved locally for this browser.");
-    } catch {
-      setError("Unable to save feedback locally. Please try again.");
+      setStatus("Feedback sent. Thank you for helping improve the app.");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to send feedback right now. Please try again."
+      );
       setStatus(null);
     } finally {
       setIsSubmitting(false);
@@ -57,21 +87,26 @@ export function FeedbackForm() {
           rows={6}
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
+          maxLength={MAX_FEEDBACK_LENGTH}
           placeholder="Share bugs, confusing moments, or ideas for the next version."
           className="w-full rounded-3xl border border-zinc-300 bg-white px-4 py-3 text-sm leading-6 text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          disabled={isSubmitting}
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || feedback.trim().length === 0}
           className="inline-flex items-center rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isSubmitting ? "Submitting..." : "Submit Feedback"}
+          {isSubmitting ? "Sending..." : "Send Feedback"}
         </button>
         <p className="text-sm text-zinc-600">
-          Feedback is saved locally for review after the demo.
+          Feedback is emailed to the project owner.
+        </p>
+        <p className="text-sm text-zinc-500">
+          {feedback.length}/{MAX_FEEDBACK_LENGTH} characters
         </p>
       </div>
 

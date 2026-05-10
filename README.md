@@ -29,11 +29,13 @@ In about 20 seconds: this app is a Next.js interview practice dashboard. Supabas
 - Tailwind CSS
 - Supabase Auth and Supabase database tables
 - Groq API for interview generation and evaluation
+- Resend Email API for product feedback emails
 
 ## Project Structure
 
 ```text
 app/
+  api/feedback/route.ts         Email-backed product feedback route handler
   api/interview/route.ts        Groq-backed interview route handler
   dashboard/page.tsx            Protected interview dashboard
 components/interview/           Interview UI components
@@ -53,12 +55,17 @@ Create a `.env.local` file in the project root:
 GROQ_API_KEY=your_groq_api_key
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+RESEND_API_KEY=your_resend_api_key
+FEEDBACK_EMAIL_FROM="AI Interview Simulator <feedback@your-domain.com>"
+FEEDBACK_EMAIL_TO=arditavdiu699@gmail.com
 ```
 
 Notes:
 
 - `GROQ_API_KEY` is used only by the server route at `app/api/interview/route.ts`.
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are used by the browser Supabase client for auth and persistence.
+- `RESEND_API_KEY` and `FEEDBACK_EMAIL_FROM` are used only by `app/api/feedback/route.ts` to email product feedback.
+- `FEEDBACK_EMAIL_TO` is optional and defaults to `arditavdiu699@gmail.com`.
 - Supabase persistence expects interview session and turn tables that match the fields used in `lib/interview-store.ts`.
 
 ## How to Run Locally
